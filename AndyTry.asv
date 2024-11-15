@@ -109,9 +109,7 @@ C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:n
 % Initialize C_m
 C_m = sqrt(C_r.^2 + C_x.^2);
 
-% Initialize rC_theta 
-%% Assignment says 'initialize everywhere' does that include in front of LE?
-%% if we want whirl to be = 0 before LE, need to only do after LE
+% Initialize rC_theta
 rC_theta = R .* C_x_inlet * tan_alpha;
 
 % Initialize Loss Factor
@@ -148,18 +146,18 @@ for r = 1:M
     delta_rC_theta_TE(r) = delta_rC_theta_h + (delta_rC_theta_s - delta_rC_theta_h) * (r - 1) / (M - 1);
 end
 %% NEED TO CONFIRM ORDER IS CORRECT, WE WANT TO DISPLAY HUB at r=1, SHROUD at r = M
+% delta_rC_theta_TE = delta_rC_theta_TE';
 
-%% Setting whirl before LE to zero, can include if needed, not sure it is correct
-% for x = 1:i_LE  % Loop over axial points before LE
-%     % Linearly interpolate in the x-direction between i_LE and i_TE
-%     rC_theta(1:M, x) = zeros(M, 1);
-% end
 
-for x = (i_LE + 1):i_TE  % Loop over axial points from L.E. to T.E.
-    % Linearly interpolate in the x-direction between i_LE and i_TE
-    rC_theta(1:M, x) = rC_theta(1:M, x - 1) + delta_rC_theta_TE .* ((x - i_LE) / (i_TE - i_LE));
+% Distribute rC_theta incrementally from i_LE to i_TE along the axial direction
+for r = 1:M  % Loop over radial points from hub to shroud
+    for x = (i_LE + 1):i_TE  % Loop over axial points from L.E. to T.E.
+        % Linearly interpolate in the x-direction between i_LE and i_TE
+        rC_theta(r, x) = rC_theta(r, x - 1) + delta_rC_theta_TE(r) * (x - i_LE) / (i_TE - i_LE);
+    end
 end
-
+rC_theta
+% rC_theta = rC_theta.';
 % Calculate C_theta
 C_theta = rC_theta ./ R; 
 
@@ -167,10 +165,13 @@ C_theta = rC_theta ./ R;
 U = zeros(num_points_r, num_points_x);
 
 % Assign non-zero values of U only within the blade region
-U(1:num_points_r, i_LE:i_TE) = N .* R(1:num_points_r, i_LE:i_TE); 
+for r = i_LE:i_TE
+    for x = 1:num_points_r
+        U(x, r) = N * R(x); 
+    end
+end
 
-% Initialize entropy to zero
-S_1 = zeros(num_points_r, 1); %% CONTINUE RVW FROM HERE
+S_1 = zeros(num_points_r, 1); 
 
 %% ------- Step 3.5: Calculation Block -------
 
