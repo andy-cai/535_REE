@@ -348,8 +348,6 @@ Psi_values(2:M-1, N) = A_exit .* (B_exit + dx^2.*omega(:, N-1));
 
 
 % ------- Step 6: Calculate velocities -------
-    % (inlet remains constant)
-
 % hub-TE
 C_x(1, num_points_x) = m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
 C_r(1, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
@@ -361,6 +359,10 @@ C_r(num_points_r, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(num_points_r,
 % hub
 C_x(1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(2, 2:num_points_x-1) - Psi_values(1, 2:num_points_x-1)) ./ (dr);
 C_r(1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(1, 3:num_points_x) - Psi_values(1, 1:num_points_x-2)) ./ (2*dx);
+
+% LE
+C_x(2:num_points_r-1, 1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(3:num_points_r, 1) - Psi_values(1:num_points_r-2, 1)) ./ (2 * dr);
+C_r(2:num_points_r-1, 1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(2:num_points_r-1, 2) - Psi_values(2:num_points_r-1, 1)) ./ (dx);
 
 % shroud
 C_x(num_points_r, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 2:num_points_x-1) - Psi_values(num_points_r - 1, 2:num_points_x-1)) ./ (dr);
@@ -374,28 +376,11 @@ C_r(2:num_points_r-1, num_points_x) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_p
 C_x(2:num_points_r-1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(3:num_points_r, 2:num_points_x-1) - Psi_values(1:num_points_r-2, 2:num_points_x-1)) ./ (2 * dr);
 C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(2:num_points_r-1, 3:num_points_x) - Psi_values(2:num_points_r-1, 1:num_points_x-2)) ./ (2 * dx);
 
-% calculate C_m
-C_m = sqrt(C_r.^2 + C_x.^2);
 
-% ------- Step 7: Calculation Block: Calculations -------> Start at TE and trace backwards to LE
-% swirl remains the same, imposed by work distribution
 
-% interpolation factors % [(n_r - 2) x (n_x - 1)]
-% % easier as psi decreases from shroud -> hub
-a = (Psi_values(2:M-1, 2:N) - Psi_values(1:M-2, 1:N-1)) ./ (Psi_values(3:M, 1:N-1) - Psi_values(1:M-2, 1:N-1));
-b = 1 - a;
+
 
 %% Note: remember to swap stag / rel properties at LE and TE depending on the cells (slide 23)
-for i = N:-1:2 % from exit to cell after inlet
-    if i >= i_TE % for values after TE, use stagnation enthalpy
-        
-    elseif i < i_LE % for values before LE, use stagnation enthalpy
-
-    else % for values inside blade, use relative enthalpy
-
-    end
-end
-
 
 
 % end 
