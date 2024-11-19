@@ -209,8 +209,8 @@ C_theta = rC_theta ./ R;
 
 %% Inlet
 % Calculate T_o1 for each radial position j at entry
-T_01 = T_inlet_static + (C_x(1:M, 1).^2 + C_theta(1:M, 1).^2) / (2 * c_p);
-h_o1 = c_p .* T_01;
+T_o1 = T_inlet_static + (C_x(1:M, 1).^2 + C_theta(1:M, 1).^2) / (2 * c_p);
+h_o1 = c_p .* T_o1;
 
 % populate initial column of static temperature and enthalpy
 T_o(1:M, 1) = T_o1;
@@ -226,7 +226,7 @@ T_o_rel(:, 1) = T_o1_rel;
 h_o_rel(:, 1) = h_o1_rel;
 
 % Calculate P_o1_rel for each radial position j
-P_01_rel = P_inlet_static(1:M) .* (T_o1_rel ./ T_01).^k_gamma;
+P_o1_rel = P_inlet_static(1:M) .* (T_o1_rel ./ T_o1).^k_gamma;
 
 % populate initial column of relative pressure
 P_o_rel(:, 1) = P_o1_rel;
