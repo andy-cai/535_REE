@@ -250,6 +250,8 @@ I_inlet = h_o1_rel - (0.5 * U(1:M, 1).^2);
 %% * confirm *
 % note that I = H0_rel - 0.5*U^2 is constant throughout (Conservation of Rothalpy)
 
+%% ERROR IN S: NEGATIVE VALUES CALCULATED
+
 
 %% Outlet
 % these calcs are not required, but retained to match notes for clarity
@@ -261,40 +263,47 @@ V_global(1:M, N) = sqrt(C_m(1:M, N).^2 + V_theta_global(1:M, N).^2);
 % Move from 1 -> N updating using common calc block
 % note that I and velocities are already calculated
 
-% relative quantities from Conservation of Rothalpy (assuming no c_r initially)
+% relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
 h_o_rel(1:M, 2:N) = I_inlet + 0.5 * U(1:M, 2:N).^2;
 T_o_rel(1:M, 2:N) = h_o_rel(1:M, 2:N) ./ c_p;
 
 % stagnation temperatures from velocities and T_o_rel
 T_o(1:M, 2:N) = T_o_rel(1:M, 2:N) - (U(1:M, 2:N) .* (U(1:M, 2:N) - 2.*C_theta(1:M, 2:N)) ./ (2 * c_p));
+
+% constant T_o after TE (no work)
+T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
+
+% constant T_o_rel = T_o after TE (no work, no U)
+T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
+
+% constant T_o_rel = T_o after TE (no work, no U)
+T_o_rel(1:M, (i_TE+1):N) = T_o(1:M, (i_TE+1):N);
+
 h_o(1:M, 2:N) = c_p .* T_o(1:M, 2:N);
+h_o_rel(1:M, 2:N) = c_p .* T_o_rel(1:M, 2:N);
 
 % static properties from stagnation and velocities
 T_static_global(1:M, 2:N) = T_o(1:M, 2:N) - (V_global(1:M, 2:N).^2 ./ (2 * c_p));
+
 
 % finding pressures
 for x = 2:N
     % isentropic relative pressure
     P_o_rel_ideal(1:M, x) = P_o_rel_ideal(1:M, x-1) .* ((T_o_rel(1:M, x) ./ T_o_rel(1:M, x-1)).^k_gamma);
-
     % relative pressure using loss coeff
     P_o_rel(1:M, x) = P_o_rel_ideal(1:M, x) - loss_global(1:M, x) .* (P_o_rel(1:M, x-1) - P_static_global(1:M, x-1));
 
     % static pressure from relative and stagnation properties
-    P_static_global(1:M, x) = P_o_rel(1:M, x).*(T_o(1:M, x) ./ T_o_rel(1:M, x)).^(k_gamma);
+    P_static_global(1:M, x) = P_o_rel(1:M, x) .* (T_o(1:M, x) ./ T_o_rel(1:M, x)).^(k_gamma);
 end
 
 % density throughout
 rho_global(1:M, 2:N) = P_static_global(1:M, 2:N) ./ (R_constant .* T_static_global(1:M, 2:N));
 
 % update entropy
-for x = 2:N
+for x = 2:N    
     S(1:M, x) = S(1:M, x - 1) + c_p .* log(h_o_rel(1:M, x) ./ h_o_rel(1:M, x - 1)) - R_constant * log(P_o_rel(1:M, x) ./ P_o_rel(1:M, x - 1));
 end
-
-    
-
-
 
 
 %% Iteration Loop

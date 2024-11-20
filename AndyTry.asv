@@ -209,8 +209,8 @@ C_theta = rC_theta ./ R;
 
 %% Inlet
 % Calculate T_o1 for each radial position j at entry
-T_01 = T_inlet_static + (C_x(1:M, 1).^2 + C_theta(1:M, 1).^2) / (2 * c_p);
-h_o1 = c_p .* T_01;
+T_o1 = T_inlet_static + (C_x(1:M, 1).^2 + C_theta(1:M, 1).^2) / (2 * c_p);
+h_o1 = c_p .* T_o1;
 
 % populate initial column of static temperature and enthalpy
 T_o(1:M, 1) = T_o1;
@@ -226,7 +226,7 @@ T_o_rel(:, 1) = T_o1_rel;
 h_o_rel(:, 1) = h_o1_rel;
 
 % Calculate P_o1_rel for each radial position j
-P_01_rel = P_inlet_static(1:M) .* (T_o1_rel ./ T_01).^k_gamma;
+P_o1_rel = P_inlet_static(1:M) .* (T_o1_rel ./ T_o1).^k_gamma;
 
 % populate initial column of relative pressure
 P_o_rel(:, 1) = P_o1_rel;
@@ -250,6 +250,8 @@ I_inlet = h_o1_rel - (0.5 * U(1:M, 1).^2);
 %% * confirm *
 % note that I = H0_rel - 0.5*U^2 is constant throughout (Conservation of Rothalpy)
 
+%% ERROR IN S: NEGATIVE VALUES CALCULATED
+
 
 %% Outlet
 % these calcs are not required, but retained to match notes for clarity
@@ -261,16 +263,27 @@ V_global(1:M, N) = sqrt(C_m(1:M, N).^2 + V_theta_global(1:M, N).^2);
 % Move from 1 -> N updating using common calc block
 % note that I and velocities are already calculated
 
-% relative quantities from Conservation of Rothalpy (assuming no c_r initially)
+% relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
 h_o_rel(1:M, 2:N) = I_inlet + 0.5 * U(1:M, 2:N).^2;
 T_o_rel(1:M, 2:N) = h_o_rel(1:M, 2:N) ./ c_p;
 
 % stagnation temperatures from velocities and T_o_rel
 T_o(1:M, 2:N) = T_o_rel(1:M, 2:N) - (U(1:M, 2:N) .* (U(1:M, 2:N) - 2.*C_theta(1:M, 2:N)) ./ (2 * c_p));
+
+% constant T_o after TE (no work)
+T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
+
+% constant T_o_rel = T_o after TE (no work)
+T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
+T_o_rel(1:M, (i_TE+1):N) = T_o(1:M, (i_TE+1):N);
+
 h_o(1:M, 2:N) = c_p .* T_o(1:M, 2:N);
+h_o_rel(1:M, 2:N) = c_p .* T_o_rel(1:M, 2:N);
 
 % static properties from stagnation and velocities
 T_static_global(1:M, 2:N) = T_o(1:M, 2:N) - (V_global(1:M, 2:N).^2 ./ (2 * c_p));
+
+T_o_rel
 
 % finding pressures
 for x = 2:N
@@ -281,30 +294,31 @@ for x = 2:N
     P_o_rel(1:M, x) = P_o_rel_ideal(1:M, x) - loss_global(1:M, x) .* (P_o_rel(1:M, x-1) - P_static_global(1:M, x-1));
 
     % static pressure from relative and stagnation properties
-    P_static_global(1:M, x) = P_o_rel(1:M, x).*(T_o(1:M, x) ./ T_o_rel(1:M, x)).^(k_gamma);
+    P_static_global(1:M, x) = P_o_rel(1:M, x) .* (T_o(1:M, x) ./ T_o_rel(1:M, x)).^(k_gamma);
 end
 
 % density throughout
 rho_global(1:M, 2:N) = P_static_global(1:M, 2:N) ./ (R_constant .* T_static_global(1:M, 2:N));
 
+
+
 % update entropy
 for x = 2:N
+    log(P_o_rel(1:M, x) ./ P_o_rel(1:M, x - 1))
+    
     S(1:M, x) = S(1:M, x - 1) + c_p .* log(h_o_rel(1:M, x) ./ h_o_rel(1:M, x - 1)) - R_constant * log(P_o_rel(1:M, x) ./ P_o_rel(1:M, x - 1));
 end
 
-    
 
-
-
-    
 %% Iteration Loop
 stop_condition = 1;
-conv = [norm(S)];
+conv = [];
 
+min_iter = 50;
 max_iter = 1000;
 iteration = 1;
 
-while stop_condition && iteration < max_iter
+while (stop_condition && iteration < max_iter) || iteration <= min_iter
         
     % ------- Step 4: Calculate Vorticity -------
     % exclude hub, shroud, LE = (2:M-1, 2:N)
@@ -328,6 +342,7 @@ while stop_condition && iteration < max_iter
     
     % set entropy for iteration to zero
     S_old = S; % store last iteration for convergence
+    Psi_old = Psi_values;
     S(:, :) = 0;
     
     % ------- Step 5: Update Psi -------
@@ -469,6 +484,8 @@ while stop_condition && iteration < max_iter
             end
         end
     end
+    h_o
+    h_o_rel
     
     %% Common calculation block from h_o / h_o_rel & velocities
     
