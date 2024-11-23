@@ -88,7 +88,7 @@ end
 % Initialize matrices to store velocities
 C_x = zeros(num_points_r, num_points_x);
 C_r = zeros(num_points_r, num_points_x);
-rC_theta = zeros(num_points_r, num_points_x);
+% rC_theta = zeros(num_points_r, num_points_x); Initialized later
 
 dx = x_values(2) - x_values(1); % Spacing in the x direction
 dr = r_values(2) - r_values(1); % Spacing in the r direction
@@ -138,7 +138,7 @@ C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:n
 % Initialize C_m
 C_m = sqrt(C_r.^2 + C_x.^2);
 
-% Initialize rC_theta 
+% Initialize rC_theta
 rC_theta = R .* C_x_inlet * tan_alpha;
 
 % ----- Initialize Loss Factor -----
@@ -160,7 +160,7 @@ loss_factor = 0.05 / (i_TE - i_LE);
 % Apply the loss factor uniformly between i = LE + 1 and i = TE
 for r = (i_LE + 1):i_TE
     w(:, r) = loss_factor;  
-    end
+end
 
 %% ------- Step 3: Start the rotor -------
  
@@ -169,18 +169,12 @@ M = num_points_r;  % Number of radial points from hub to shroud
 
 % Calculate the prescribed swirl increase at the trailing edge for each radial station
 delta_rC_theta_TE = zeros(M, 1);
-
 for r = 1:M
     delta_rC_theta_TE(r) = delta_rC_theta_hub + (delta_rC_theta_shroud - delta_rC_theta_hub) * (r - 1) / (M - 1);
 end
 %% NEED TO CONFIRM ORDER IS CORRECT, WE WANT TO DISPLAY HUB at r=1, SHROUD at r = M
 
-%% Setting whirl before LE to zero, can include if needed, don't think this is correct (in free vortex)
-% for x = 1:i_LE  % Loop over axial points before LE
-%     % Linearly interpolate in the x-direction between i_LE and i_TE
-%     rC_theta(1:M, x) = zeros(M, 1);
-% end
-
+%% Apply increase in whirl and distribute evenly across blade width
 for x = (i_LE + 1):i_TE  % Loop over axial points from L.E. to T.E.
     % Linearly interpolate in the x-direction between i_LE and i_TE
     rC_theta(1:M, x) = rC_theta(1:M, x - 1) + delta_rC_theta_TE .* ((x - i_LE) / (i_TE - i_LE));
@@ -221,29 +215,29 @@ rho_global = zeros(M, N);      % Density at each station
 
 loss_global = zeros(M, N);
 
-
-% Initialize the first column (station 1) with inlet values
-% % Station 1: Before leading edge at inlet: x = 1
-% % Station 2: After trailing edge at exit: x = N
-%% someone confirm this isn't LE, TE
-
 %% ------- Step 3.5b: Calculation Block: Calculations -------
 
-% Calculate C_theta
+% Calculate C_theta and other non-iterated quantities
 C_theta = rC_theta ./ R; 
 
-%% Inlet
+% These seem to sit nicer in the code here than below, but commenting out in case it breaks
+V_theta_global(1:M, N) = U(1:M, N) - C_theta(1:M, N);
+Beta_global(1:M, N) = atan(V_theta_global(1:M, N) ./ C_m(1:M, N));
+V_global(1:M, N) = sqrt(C_m(1:M, N).^2 + V_theta_global(1:M, N).^2);
+
+
+%% Inlet Calculations, following in-class example
 % Calculate T_o1 for each radial position j at entry
 T_o1 = T_inlet_static + (C_x(1:M, 1).^2 + C_theta(1:M, 1).^2) / (2 * c_p);
 h_o1 = c_p .* T_o1;
 
-% populate initial column of static temperature and enthalpy
+% Populate initial column of static temperature and enthalpy
 T_o(1:M, 1) = T_o1;
 h_o(1:M, 1) = h_o1;
 
 % Initialize T_o1_rel array to store relative total temperature for each radial position j
 % % only valid over entire domain as U initialized as 0 outside rotor
-T_o1_rel = T_o1 + (U(1:M, 1) .* (U(1:M, 1) - 2.*C_theta(1:M, 1)) / (2 * c_p));
+T_o1_rel = T_o1 + (U(1:M, 1) .* (U(1:M, 1) - 2.*C_theta(1:M, 1).*U(1:M,1)) / (2 * c_p));
 h_o1_rel = c_p .* T_o1_rel;
 
 % populate initial column of relative temp and enthalpy
@@ -251,12 +245,14 @@ T_o_rel(:, 1) = T_o1_rel;
 h_o_rel(:, 1) = h_o1_rel;
 
 % Calculate P_o1_rel for each radial position j
-P_o1_rel = P_inlet_static(1:M) .* (T_o1_rel ./ T_o1).^k_gamma;
+% P_o1_rel = P_inlet_static(1:M) .* (T_o1_rel ./ T_o1).^k_gamma; % Should T_o1 be replaced with T_inlet_static?
+P_o1_rel = P_inlet_static(1:M) .* (T_o1_rel / T_inlet_static).^k_gamma;
 
 % populate initial column of relative pressure
 P_o_rel(:, 1) = P_o1_rel;
 
 P_o_rel_ideal(:, 1) = P_o1_rel; %% ** confirm **
+% Bro what is P_o_rel_ideal used for
 
 % initialize entropy at inlet to be zero
 S(:, 1) = 0;  
@@ -264,7 +260,7 @@ S(:, 1) = 0;
 % initialize loss factor
 loss_global(1:M, (i_LE + 1):i_TE) = loss_factor;
 
-% Initialize static temperature and pressure at station 1
+% Initialize static temperature and pressure at inlet
 T_static_global(:, 1) = T_inlet_static(:,1);  % Set initial static temperature to inlet static temperature
 P_static_global(:, 1) = P_inlet_static(:);  % Set initial static pressure to inlet static pressure
 rho_global(:, 1) = P_static_global(:, 1) ./ (R_constant .* T_static_global(:, 1));
@@ -275,18 +271,17 @@ I_inlet = h_o1_rel - (0.5 * U(1:M, 1).^2);
 %% * confirm *
 % note that I = H0_rel - 0.5*U^2 is constant throughout (Conservation of Rothalpy)
 
-%% ERROR IN S: NEGATIVE VALUES CALCULATED
+%% Middle Chunk of Calculations
+% Move from 1 -> N updating using common calc block
+% note that I and velocities are already calculated
 
-
-%% Outlet
+% Commenting out as these were shifted up
+%{
 % these calcs are not required, but retained to match notes for clarity
 V_theta_global(1:M, N) = U(1:M, N) - C_theta(1:M, N);
 Beta_global(1:M, N) = atan(V_theta_global(1:M, N) ./ C_m(1:M, N));
 V_global(1:M, N) = sqrt(C_m(1:M, N).^2 + V_theta_global(1:M, N).^2);
-
-
-% Move from 1 -> N updating using common calc block
-% note that I and velocities are already calculated
+%}
 
 % relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
 h_o_rel(1:M, 2:N) = I_inlet + 0.5 * U(1:M, 2:N).^2;
@@ -342,7 +337,7 @@ iteration = 1;
 while (stop_condition && iteration < max_iter) || iteration <= min_iter
         
     % ------- Step 4: Calculate Vorticity -------
-    % exclude hub, shroud, LE = (2:M-1, 2:N)
+    % exclude hub, shroud, inlet = (2:M-1, 2:N)
     
     % Term 1: C_theta(i, j) / (R(i, j) * (rC(i, j+1) - rC(i, j-1))
     term1 = C_theta(2:M-1, 2:N) ./ R(2:M-1, 2:N) .* (rC_theta(3:M, 2:N) - rC_theta(1:M-2, 2:N));
@@ -369,7 +364,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     % ------- Step 5: Update Psi -------
     
     %% NOTE: I do not know how to compute the (rho*r)1/2 -> is there a formula or is this the average of adjacent cells?
-    %% -> currently assuming the average of adjacent cells ***** CHECK ******
+    %% -> currently assuming the average of adjacent cells ***** CHECK ******. This alignes with instructions
     
     % computing adjacent averages of rho*r
     % % technically plus and minus r are reversed, as indices reversed
@@ -397,31 +392,33 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     % ------- Step 6: Calculate velocities -------
         % (inlet remains constant)
         % repeat of prior calcs
-    
-    % hub-TE
+        
+    % Hub, outlet. Modified as there are no points below, or right of, (1, num_points_x)
     C_x(1, num_points_x) = m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
+    % Should the denominator be 0.5dr or dr?
+    % Why is there a '+' here until end... Suspicious is something is missing?
     C_r(1, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
     
-    % shroud-TE
-    C_x(num_points_r, num_points_x) = m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r - 1, num_points_x)) / (dr);
+    % Shroud, outlet. Modified as there are no points above, or right of, (num_points_r, num_points_x)
+    C_x(num_points_r, num_points_x) = m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r - 1, num_points_x)) / (dr); %Should the denominator be 0.5dr or dr?
     C_r(num_points_r, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r, num_points_x - 1)) / (dx);
     
-    % hub
-    C_x(1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(2, 2:num_points_x-1) - Psi_values(1, 2:num_points_x-1)) ./ (dr);
-    C_r(1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(1, 3:num_points_x) - Psi_values(1, 1:num_points_x-2)) ./ (2*dx);
+    % Hub. Modified as there are no points below the row
+    C_x(1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(2, 2:num_points_x-1) - Psi_values(1, 2:num_points_x-1)) ./ (dr); %Should the denominator be 0.5dr or dr?
+    C_r(1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(1, 3:num_points_x) - Psi_values(1, 1:num_points_x-2)) ./ (2*dx); 
     
-    % shroud
-    C_x(num_points_r, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 2:num_points_x-1) - Psi_values(num_points_r - 1, 2:num_points_x-1)) ./ (dr);
-    C_r(num_points_r, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 3:num_points_x) - Psi_values(r, 1:num_points_x-2)) ./ (2*dx);
+    % Shroud. Modified as there are no points above the row
+    C_x(num_points_r, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 2:num_points_x-1) - Psi_values(num_points_r - 1, 2:num_points_x-1)) ./ (dr); %Should the denominator be 0.5dr or dr?
+    C_r(num_points_r, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 3:num_points_x) - Psi_values(num_points_r, 1:num_points_x-2)) ./ (2*dx);
     
-    % TE
+    % Outlet. Modified as there are no points right of the column
     C_x(2:num_points_r-1, num_points_x) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, num_points_x)) .* (Psi_values(3:num_points_r, num_points_x) - Psi_values(1:num_points_r - 2, num_points_x)) ./ (2*dr);
     C_r(2:num_points_r-1, num_points_x) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, num_points_x)) .* (Psi_values(2:num_points_r-1, num_points_x) - Psi_values(2:num_points_r-1, num_points_x - 1)) ./ (dx);
     
-    % Interior of Blade
+    % Everywhere else
     C_x(2:num_points_r-1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(3:num_points_r, 2:num_points_x-1) - Psi_values(1:num_points_r-2, 2:num_points_x-1)) ./ (2 * dr);
     C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(2:num_points_r-1, 3:num_points_x) - Psi_values(2:num_points_r-1, 1:num_points_x-2)) ./ (2 * dx);
-    
+
     % calculate C_m
     C_m = sqrt(C_r.^2 + C_x.^2);
     
@@ -561,7 +558,59 @@ semilogy(conv)
 % 2. Confirm (rho*r)1/2 is the average of adjacent cells?
 
 
+%{
+[X, R] = meshgrid(x_values, r_values);  % Create grid of x and r values
+% Surface plot
+figure;% Contour plot
+figure;
+contourf(X, R, T, 20);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Temperature Contour Plot');
+colorbar;  % Add a color bar to indicate value scale
+surf(X, R, V_global);  % Replace T with the desired output (temperature, pressure, etc.)
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+zlabel('Temperature');  % Replace with the variable you are plotting
+title('Temperature Distribution');
+shading interp;  % Smooth the color transition
+colorbar;  % Add a color bar to indicate value scale
+%}
 
+%% ----- Plots -----
+
+% Streamlines
+figure;
+contourf(X, R, Psi_values, 10);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Streamline Functions');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+% Stagnation enthalpy plot
+figure;
+contourf(X, R, h_o, 10);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Stagnation Enthalpy');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+% Static pressure plot
+figure;
+contourf(X, R, P_static_global, 10);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Static Pressure');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
 
 % ------- Step X: Functions ---------
 
