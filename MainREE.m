@@ -37,25 +37,25 @@ alpha = 30*pi/180;   %Unclear which angle this corresponds to tbh
 
 %% 1. Generate the grid
 % Create square matrix to store properties at different geometries
-n = 5; % Number of divisions in square
+n = 14; % Number of divisions in square
 x = linspace(0, rotor_width, n+1);
 r = linspace(r_hub, r_tip, n+1);
 [X, Y] = meshgrid(x,r);     %ndgrid() might end up being better
 
 
 %% Plots
-% % 2D plot
-% figure;
-% plot(X, Y, 'k.', 'MarkerSize', 10);  % Plot each point with black dots
-% hold on;
-% plot(X', Y', 'k.', 'MarkerSize', 10); % Plot the transpose to show vertical lines
-% xlabel('Width');
-% ylabel('Radius');
-% title('Grid for Finite Difference Calculation');
-% grid on;
-% axis equal;
-% plot(X, Y, 'k');    % Horizontal grid lines
-% plot(X', Y', 'k');  % Vertical grid lines
+% 2D plot
+figure;
+plot(X, Y, 'k.', 'MarkerSize', 10);  % Plot each point with black dots
+hold on;
+plot(X', Y', 'k.', 'MarkerSize', 10); % Plot the transpose to show vertical lines
+xlabel('Width');
+ylabel('Radius');
+title('Grid for Finite Difference Calculation');
+grid on;
+axis equal;
+plot(X, Y, 'k');    % Horizontal grid lines
+plot(X', Y', 'k');  % Vertical grid lines
 
 % % Convert to cylindrical coordinates to create an annular 3D shape
 % theta = X * (2 * pi / rotor_width); % Mapping the width to an angular range from 0 to 2*pi
@@ -75,9 +75,9 @@ r = linspace(r_hub, r_tip, n+1);
 
 
 %% Initialize all variables
-denom = r_tip - r_hub;
+denom = r_tip^2 - r_hub^2;
 % Note that using Y. instead of r. is necessary. Y. yield a matrix, while r. gives a vector
-psi = (Y.^2 - r_hub)/(denom);
+psi = (Y.^2 - r_hub^2)/(denom);
 rho_in = p_in / gas_const / T_in;
 m = rho_in * c_x_in * A_in;
 Stag_enthalp_in = c_p*T_in + c_x_in^2/2;
@@ -90,11 +90,15 @@ for i = 1:n
     c_x(i, 1) = c_x_in;
 end
 
+del_r = 0.1/n;
+%for i = 1:n-1
+ %   c_x(i+1, 1) = 1/(r(i)*del_r)*psi()
+%end
 
-% %Graph psi
-% figure;
-% surf(X, Y, psi);
-% xlabel('X-axis');
-% ylabel('Y-axis');
-% zlabel('\phi (Phi)');
-% title('Initial \psi Distribution');
+%Graph psi
+figure;
+surf(X, Y, psi);
+xlabel('X-axis');
+ylabel('R');
+zlabel('\phi (Phi)');
+title('Initial \psi Distribution');
