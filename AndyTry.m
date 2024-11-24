@@ -27,13 +27,13 @@ delta_rC_theta_shroud = 84.4; % [m^2/s]
 blade_width = 0.1;      % Blade width (Specified for this system)
 
 % Define the x and r range based on blade width
-widths_before_rotor = 2;     % Ensure 4 blade widths before rotor
-widths_after_rotor = 2;      % Ensure 4 blade widths before rotor
+widths_before_rotor = 4;     % Ensure 4 blade widths before rotor
+widths_after_rotor = 4;      % Ensure 4 blade widths before rotor
 
 % Define size of the grid
 x_min = 0;               
 x_max = (widths_before_rotor + widths_after_rotor + 1) * blade_width;
-num_points_rotor = 5;        % Number of grid points within blade
+num_points_rotor = 10;        % Number of grid points within blade
 num_points_x = 1+num_points_rotor*(widths_before_rotor+widths_after_rotor+1); % Ensure LE, TE sit exactly on grid point
 
 x_values = linspace(x_min, x_max, num_points_x);
@@ -258,10 +258,6 @@ T_static_global(:, 1) = T_inlet_static(:,1);  % Set initial static temperature t
 P_static_global(:, 1) = P_inlet_static;  % Set initial static pressure to inlet static pressure
 rho_global(:, 1) = P_static_global(:, 1) ./ (R_constant .* T_static_global(:, 1));
 
-% calculate I at each radial location (inlet)
-I_inlet = h_o1_rel - (0.5 * U(1:M, 1).^2);
-
-%% * confirm *
 % note that I = H0_rel - 0.5*U^2 is constant throughout (Conservation of Rothalpy)
 
 %% Middle Chunk of Calculations
@@ -269,9 +265,9 @@ I_inlet = h_o1_rel - (0.5 * U(1:M, 1).^2);
 % note that I and velocities are already calculated
 
 % relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
-h_o_rel(1:M, 2:N) = I_inlet + 0.5 * U(1:M, 2:N).^2;
+h_o_rel(1:M, 2:N) = h_o1_rel + 0.5 * U(1:M, 2:N).^2;
 
-%% REPLACE W/ INTERPOLATION
+h_o_rel(1:M, i_LE) = h_o1_rel; % LE setting h_o_rel to h_o
 
 T_o_rel(1:M, 2:N) = h_o_rel(1:M, 2:N) ./ c_p;
 
@@ -438,24 +434,17 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
             if x <= i_LE || x > i_TE % for values before LE or after TE, use stagnation enthalpy
                 
                 if shroud_side(r-1, x-1) % if streamline goes towards shroud
-                    h_o_streamline = h_o(r-1, x-1).* a_towards_shroud(r-1, x-1) + h_o(r, x-1).* b_towards_shroud(r-1, x-1); % h_o at origin (i-1)
-                    
-                    % calculate other properties at streamline origin
-                    % U_streamline = U(r-1, x-1).* a_towards_shroud(r-1, x-1) + U(r, x-1).* b_towards_shroud(r-1, x-1); % U at origin ** is this zero outside of blade region? **
-    
-    
+                    h_o_streamline = h_o(r, x-1).* a_towards_shroud(r-1, x-1) + h_o(r-1, x-1).* b_towards_shroud(r-1, x-1); % h_o at origin (i-1)
+                      
                 else % if streamline goes towards hub
-                    h_o_streamline = h_o(r, x-1).* a_towards_hub(r-1, x-1) + h_o(r+1, x-1).* b_towards_hub(r-1, x-1); % h_o at origin (i-1)
-                    
-                    % calculate other properties at streamline origin
-                    % U_streamline = U(r, x-1).* a_towards_hub(r-1, x-1) + U(r+1, x-1).* b_towards_hub(r-1, x-1); % U at origin (i-1) ** is this zero outside of blade region? **
-    
+                    h_o_streamline = h_o(r+1, x-1).* a_towards_hub(r-1, x-1) + h_o(r, x-1).* b_towards_hub(r-1, x-1); % h_o at origin (i-1)
+
                 end
 
                 U_streamline = 0;
 
                 % trace forward to define enthalpy (i)
-                h_o(r, x) = h_o_streamline - (0.5 * U_streamline^2) + (0.5 * U(r, x)^2); % defining same point, just from different cell depending on sttreamline
+                h_o(r, x) = h_o_streamline; % - (0.5 * U_streamline^2) + (0.5 * U(r, x)^2); % defining same point, just from different cell depending on streamline
 
                 % update relative enthalpy
                 h_o_rel(r, x) = h_o(r, x) + U(r, x) * (U(r, x) - 2*C_theta(r, x)) / 2;
@@ -463,19 +452,17 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
             else % for values inside blade, use relative enthalpy
     
                 if shroud_side(r-1, x-1) % if streamline goes towards shroud
-                    h_o_rel_streamline = h_o_rel(r-1, x-1).* a_towards_shroud(r-1, x-1) + h_o_rel(r, x-1).* b_towards_shroud(r-1, x-1); % h_o_rel at origin (i-1)
+                    h_o_rel_streamline = h_o_rel(r, x-1).* a_towards_shroud(r-1, x-1) + h_o_rel(r-1, x-1).* b_towards_shroud(r-1, x-1); % h_o_rel at origin (i-1)
                     
                  % calculate other properties at streamline origin
-                    R_streamline = R(r-1, x-1).* a_towards_shroud(r-1, x-1) + R(r, x-1).* b_towards_shroud(r-1, x-1); % R at origin (i-1)
-                    U_streamline = U(r-1, x-1).* a_towards_shroud(r-1, x-1) + U(r, x-1).* b_towards_shroud(r-1, x-1); % U at origin (non-zero)
-    
-    
+                    U_streamline = U(r, x-1).* a_towards_shroud(r-1, x-1) + U(r-1, x-1).* b_towards_shroud(r-1, x-1); % U at origin (non-zero)
+                  
+                 
                 else % if streamline goes towards hub
-                    h_o_rel_streamline = h_o_rel(r, x-1).* a_towards_hub(r-1, x-1) + h_o_rel(r+1, x-1).* b_towards_hub(r-1, x-1); % h_o_rel at origin (i-1)
+                    h_o_rel_streamline = h_o_rel(r+1, x-1).* a_towards_hub(r-1, x-1) + h_o_rel(r, x-1).* b_towards_hub(r-1, x-1); % h_o_rel at origin (i-1)
                     
                     % calculate other properties at streamline origin
-                    R_streamline = R(r, x-1).* a_towards_hub(r-1, x-1) + R(r+1, x-1).* b_towards_hub(r-1, x-1); % R at origin (i-1)
-                    U_streamline = U(r, x-1).* a_towards_hub(r-1, x-1) + U(r+1, x-1).* b_towards_hub(r-1, x-1); % U at origin (i-1) (non-zero)
+                    U_streamline = U(r+1, x-1).* a_towards_hub(r-1, x-1) + U(r, x-1).* b_towards_hub(r-1, x-1); % U at origin (i-1) (non-zero)
     
                 end
     
@@ -510,7 +497,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
         P_o_rel(1:M, x) = P_o_rel_ideal(1:M, x) - loss_global(1:M, x) .* (P_o_rel(1:M, x-1) - P_static_global(1:M, x-1));
     
         % static pressure from relative and stagnation properties
-        P_static_global(1:M, x) = P_o_rel(1:M, x).*(T_o(1:M, x) ./ T_o_rel(1:M, x)).^(k_gamma);
+        P_static_global(1:M, x) = P_o_rel(1:M, x) .* (T_o(1:M, x) ./ T_o_rel(1:M, x)).^(k_gamma);
     end
     
     % density throughout
