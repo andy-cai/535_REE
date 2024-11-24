@@ -97,29 +97,29 @@ dr = r_values(2) - r_values(1); % Spacing in the r direction
 % Treat each corner and perimeter row/column separately...
 
 % Hub, inlet. Modified as there are no points below, or left of, (1, 1)
-C_x(1, 1) = m_dot / ((2 * pi * rho_inlet) .* R(1, 1)) * (Psi_values(2, 1) - Psi_values(1, 1)) / (dr); %Should the denominator be 0.5dr or dr?
+C_x(1, 1) = m_dot / ((2 * pi * rho_inlet) .* R(1, 1)) * (Psi_values(2, 1) - Psi_values(1, 1)) / (dr)*0.5; %Should the denominator be 0.5dr or dr?
 C_r(1, 1) = -m_dot / (2 * pi * rho_inlet * R(1, 1)) * (Psi_values(1, 2) - Psi_values(1, 1)) / (dx);
 
 % Hub, outlet. Modified as there are no points below, or right of, (1, num_points_x)
-C_x(1, num_points_x) = m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
+C_x(1, num_points_x) = m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr)*0.5;
 % Should the denominator be 0.5dr or dr?
 % Why is there a '+' here until end... Suspicious is something is missing?
 C_r(1, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
 
 % Shroud, inlet. Modified as there are no points above, or left of, (num_points_r, 1)
-C_x(num_points_r, 1) = m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 1) - Psi_values(num_points_r - 1, 1)) / (dr); %Should the denominator be 0.5dr or dr?
+C_x(num_points_r, 1) = m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 1) - Psi_values(num_points_r - 1, 1)) / (dr)*0.5; %Should the denominator be 0.5dr or dr?
 C_r(num_points_r, 1) = -m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 2) - Psi_values(num_points_r, 1)) / (dx);
 
 % Shroud, outlet. Modified as there are no points above, or right of, (num_points_r, num_points_x)
-C_x(num_points_r, num_points_x) = m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r - 1, num_points_x)) / (dr); %Should the denominator be 0.5dr or dr?
+C_x(num_points_r, num_points_x) = m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r - 1, num_points_x)) / (dr)*0.5; %Should the denominator be 0.5dr or dr?
 C_r(num_points_r, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r, num_points_x - 1)) / (dx);
 
 % Hub. Modified as there are no points below the row
-C_x(1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(2, 2:num_points_x-1) - Psi_values(1, 2:num_points_x-1)) ./ (dr); %Should the denominator be 0.5dr or dr?
+C_x(1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(2, 2:num_points_x-1) - Psi_values(1, 2:num_points_x-1)) ./ (dr)*0.5; %Should the denominator be 0.5dr or dr?
 C_r(1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(1, 3:num_points_x) - Psi_values(1, 1:num_points_x-2)) ./ (2*dx); 
 
 % Shroud. Modified as there are no points above the row
-C_x(num_points_r, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 2:num_points_x-1) - Psi_values(num_points_r - 1, 2:num_points_x-1)) ./ (dr); %Should the denominator be 0.5dr or dr?
+C_x(num_points_r, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 2:num_points_x-1) - Psi_values(num_points_r - 1, 2:num_points_x-1)) ./ (dr)*0.5; %Should the denominator be 0.5dr or dr?
 C_r(num_points_r, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 3:num_points_x) - Psi_values(num_points_r, 1:num_points_x-2)) ./ (2*dx);
 
 % Inlet. Modified as there are no points left of the column
@@ -225,6 +225,14 @@ V_theta_global(1:M, N) = U(1:M, N) - C_theta(1:M, N);
 Beta_global(1:M, N) = atan(V_theta_global(1:M, N) ./ C_m(1:M, N));
 V_global(1:M, N) = sqrt(C_m(1:M, N).^2 + V_theta_global(1:M, N).^2);
 
+%% Common Calculation Block, Again
+
+h_global(1:M, N) = h_o_rel(1:M, N) - 0.5*V_global(1:M, N).^2;
+h_o(1:M, N) = h_global(1:M, N) + (C_m(1:M, N).^2 + C_theta(1:M, N).^2)/2;
+
+% Then do interpolation to find the relative hs
+P_o2_rel_ideal(1:M, N) = P_o_rel_ideal(1:M, N).*(h_o_rel(1:M, N)./h_o1_rel(1:M, N)).^k_gamma;
+P_o2_rel(1:M, N) = P_o2_rel_ideal(1:M, N) - loss_factor(1:M).*()
 
 %% Inlet Calculations, following in-class example
 % Calculate T_o1 for each radial position j at entry
@@ -394,30 +402,28 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
         % repeat of prior calcs
         
     % Hub, outlet. Modified as there are no points below, or right of, (1, num_points_x)
-    C_x(1, num_points_x) = m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
-    % Should the denominator be 0.5dr or dr?
-    % Why is there a '+' here until end... Suspicious is something is missing?
-    C_r(1, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
+    C_x(1, num_points_x) = m_dot / (2 * pi .* rho_global(1,num_points_x) .* R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr)*0.5;
+    C_r(1, num_points_x) = -m_dot / (2 * pi .* rho_global(1,num_points_x) .* R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
     
     % Shroud, outlet. Modified as there are no points above, or right of, (num_points_r, num_points_x)
-    C_x(num_points_r, num_points_x) = m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r - 1, num_points_x)) / (dr); %Should the denominator be 0.5dr or dr?
-    C_r(num_points_r, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r, num_points_x - 1)) / (dx);
+    C_x(num_points_r, num_points_x) = m_dot / (2 * pi .* rho_global(num_points_r,num_points_x) .* R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r - 1, num_points_x)) / (dr)*0.5; %Should the denominator be 0.5dr or dr?
+    C_r(num_points_r, num_points_x) = -m_dot / (2 * pi .* rho_global(num_points_r,num_points_x) .* R(num_points_r, num_points_x)) * (Psi_values(num_points_r, num_points_x) - Psi_values(num_points_r, num_points_x - 1)) / (dx);
     
     % Hub. Modified as there are no points below the row
-    C_x(1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(2, 2:num_points_x-1) - Psi_values(1, 2:num_points_x-1)) ./ (dr); %Should the denominator be 0.5dr or dr?
-    C_r(1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(1, 2:num_points_x-1)) .* (Psi_values(1, 3:num_points_x) - Psi_values(1, 1:num_points_x-2)) ./ (2*dx); 
+    C_x(1, 2:num_points_x-1) = m_dot ./ (2 * pi .* rho_global(1,2:num_points_x-1) .* R(1, 2:num_points_x-1)) .* (Psi_values(2, 2:num_points_x-1) - Psi_values(1, 2:num_points_x-1)) ./ (dr)*0.5; %Should the denominator be 0.5dr or dr?
+    C_r(1, 2:num_points_x-1) = -m_dot ./ (2 * pi .* rho_global(1,2:num_points_x-1) .* R(1, 2:num_points_x-1)) .* (Psi_values(1, 3:num_points_x) - Psi_values(1, 1:num_points_x-2)) ./ (2*dx); 
     
     % Shroud. Modified as there are no points above the row
-    C_x(num_points_r, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 2:num_points_x-1) - Psi_values(num_points_r - 1, 2:num_points_x-1)) ./ (dr); %Should the denominator be 0.5dr or dr?
-    C_r(num_points_r, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 3:num_points_x) - Psi_values(num_points_r, 1:num_points_x-2)) ./ (2*dx);
+    C_x(num_points_r, 2:num_points_x-1) = m_dot ./ (2 * pi .* rho_global(num_points_r,2:num_points_x-1) .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 2:num_points_x-1) - Psi_values(num_points_r - 1, 2:num_points_x-1)) ./ (dr)*0.5; %Should the denominator be 0.5dr or dr?
+    C_r(num_points_r, 2:num_points_x-1) = -m_dot ./ (2 * pi .* rho_global(num_points_r,2:num_points_x-1) .* R(num_points_r, 2:num_points_x-1)) .* (Psi_values(num_points_r, 3:num_points_x) - Psi_values(num_points_r, 1:num_points_x-2)) ./ (2*dx);
     
     % Outlet. Modified as there are no points right of the column
-    C_x(2:num_points_r-1, num_points_x) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, num_points_x)) .* (Psi_values(3:num_points_r, num_points_x) - Psi_values(1:num_points_r - 2, num_points_x)) ./ (2*dr);
-    C_r(2:num_points_r-1, num_points_x) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, num_points_x)) .* (Psi_values(2:num_points_r-1, num_points_x) - Psi_values(2:num_points_r-1, num_points_x - 1)) ./ (dx);
+    C_x(2:num_points_r-1, num_points_x) = m_dot ./ (2 * pi .* rho_global(2:num_points_r-1,num_points_x) .* R(2:num_points_r-1, num_points_x)) .* (Psi_values(3:num_points_r, num_points_x) - Psi_values(1:num_points_r - 2, num_points_x)) ./ (2*dr);
+    C_r(2:num_points_r-1, num_points_x) = -m_dot ./ (2 * pi .* rho_global(2:num_points_r-1,num_points_x) .* R(2:num_points_r-1, num_points_x)) .* (Psi_values(2:num_points_r-1, num_points_x) - Psi_values(2:num_points_r-1, num_points_x - 1)) ./ (dx);
     
     % Everywhere else
-    C_x(2:num_points_r-1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(3:num_points_r, 2:num_points_x-1) - Psi_values(1:num_points_r-2, 2:num_points_x-1)) ./ (2 * dr);
-    C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(2:num_points_r-1, 3:num_points_x) - Psi_values(2:num_points_r-1, 1:num_points_x-2)) ./ (2 * dx);
+    C_x(2:num_points_r-1, 2:num_points_x-1) = m_dot ./ (2 * pi .* rho_global(2:num_points_r-1,2:num_points_x-1) .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(3:num_points_r, 2:num_points_x-1) - Psi_values(1:num_points_r-2, 2:num_points_x-1)) ./ (2 * dr);
+    C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi .* rho_global(2:num_points_r-1,2:num_points_x-1) .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(2:num_points_r-1, 3:num_points_x) - Psi_values(2:num_points_r-1, 1:num_points_x-2)) ./ (2 * dx);
 
     % calculate C_m
     C_m = sqrt(C_r.^2 + C_x.^2);
