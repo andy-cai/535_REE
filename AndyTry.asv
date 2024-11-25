@@ -476,7 +476,6 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
         
     % Hub, outlet. Modified as there are no points below, or right of, (1, num_points_x)
     C_x(1, num_points_x) = m_dot / (2 * pi * rho_global(1, num_points_x) * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
-    % Should the denominator be 0.5dr or dr?
     % Why is there a '+' here until end... Suspicious is something is missing?
     C_r(1, num_points_x) = -m_dot / (2 * pi * rho_global(1, num_points_x) * R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
     
@@ -544,12 +543,14 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
             h_o_rel(M, x) = h_o(M, x) + U(M, x) * (U(M, x) - 2*C_theta(M, x)) / 2;
 
 
-        else
+        else % relative enthalpies
             % hub
-            h_o_rel(1, x) = h_o_rel(1, x-1); % h_o at origin (i-1)
+            h_o_rel(1, x) = h_o_rel(1, x-1);
+            h_o(1, x) = h_o_rel(1, x) - U(1, x) * (U(1, x) - 2*C_theta(1, x)) / 2;
 
             % shroud
-            h_o_rel_streamline_s = h_o_rel(M, x-1); % h_o at origin (i-1)
+            h_o_rel(M, x) = h_o_rel(M, x-1);
+            h_o(M, x) = h_o_rel(M, x) - U(M, x) * (U(M, x) - 2*C_theta(M, x)) / 2;
 
         end
     end

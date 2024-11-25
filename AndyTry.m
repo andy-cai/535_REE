@@ -20,9 +20,9 @@ tan_alpha = tan(deg2rad(alpha));    % Convert angle to radians and calculate tan
 N = 6000 * (2*pi)/60; % [rad/s]
 
 delta_rC_theta_hub = 82.3; % [m^2/s]
-delta_rC_theta_hub = 0;
+% delta_rC_theta_hub = 0;
 delta_rC_theta_shroud = 84.4; % [m^2/s]
-delta_rC_theta_shroud = 0;
+% delta_rC_theta_shroud = 0;
 
 %% ------- Step 1: Grid -------
 
@@ -476,7 +476,6 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
         
     % Hub, outlet. Modified as there are no points below, or right of, (1, num_points_x)
     C_x(1, num_points_x) = m_dot / (2 * pi * rho_global(1, num_points_x) * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
-    % Should the denominator be 0.5dr or dr?
     % Why is there a '+' here until end... Suspicious is something is missing?
     C_r(1, num_points_x) = -m_dot / (2 * pi * rho_global(1, num_points_x) * R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
     
