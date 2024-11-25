@@ -107,7 +107,6 @@ C_r(1, 1) = -m_dot / (2 * pi * rho_inlet * R(1, 1)) * (Psi_values(1, 2) - Psi_va
 
 % Hub, outlet. Modified as there are no points below, or right of (1, num_points_x)
 C_x(1, num_points_x) = m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
-% Why is there a '+' here until end... Suspicious is something is missing?
 C_r(1, num_points_x) = -m_dot / (2 * pi * rho_inlet * R(1, num_points_x)) * (Psi_values(1, num_points_x) - Psi_values(1, num_points_x - 1)) / (dx);
 
 % Shroud, inlet. Modified as there are no points above, or left of, (num_points_r, 1)
@@ -138,12 +137,12 @@ C_r(2:num_points_r-1, num_points_x) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_p
 C_x(2:num_points_r-1, 2:num_points_x-1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(3:num_points_r, 2:num_points_x-1) - Psi_values(1:num_points_r-2, 2:num_points_x-1)) ./ (2 * dr);
 C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 2:num_points_x-1)) .* (Psi_values(2:num_points_r-1, 3:num_points_x) - Psi_values(2:num_points_r-1, 1:num_points_x-2)) ./ (2 * dx);
 
-
 % Initialize C_m
 C_m = sqrt(C_r.^2 + C_x.^2);
 
 % Initialize rC_theta
-rC_theta = R .* C_x_inlet * tan_alpha;
+rC_theta = zeros(num_points_r, num_points_x);
+rC_theta(1:num_points_r, :) = R(1:num_points_r, :) .* C_x_inlet * tan_alpha;
 
 % ----- Initialize Loss Factor -----
 % Define the x positions of the leading edge (LE) and trailing edge (TE)
@@ -272,9 +271,7 @@ rho_global(:, 1) = P_static_global(:, 1) ./ (R_constant .* T_static_global(:, 1)
 % note that I and velocities are already calculated
 
 % relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
-h_o_rel(1:M, 2:N) = h_o1_rel + 0.5 * U(1:M, 2:N).^2; % Conservation of Rothalpy
-
-h_o_rel(1:M, i_LE) = h_o1_rel;  % Setting LE to have h_0 = h_o1_rel
+h_o_rel(1:M, 2:N) = h_o1_rel + 0.5 * U(1:M, 2:N).^2; % Conservation of Rothalpy, U(1, 1) = 0
 
 T_o_rel(1:M, 2:N) = h_o_rel(1:M, 2:N) ./ c_p;
 
@@ -339,7 +336,7 @@ x_upper = x_lower + 2*blade_width;
 % xlim([x_lower x_upper]);
 colorbar;  % Add a color bar to indicate value scale
 
-% Stagnation enthalpy plot
+% Entropy plot
 figure;
 contourf(X, R, S, 20);  % Replace T with the desired output, 20 is the number of contour levels
 xlabel('x (Axial Coordinate)');
@@ -533,6 +530,33 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     %% Note: remember to swap stag / rel properties at LE and TE depending on the cells (slide 23)
     
     %% Note: There has got to be a cleaner way to do this -_-
+
+    %% HUB / SHROUD
+    for x = 2:N % from inlet to exit (inlet already defined)
+        if x <= i_LE || x > i_TE % for values before LE or after TE, use stagnation enthalpy
+
+            % hub
+            h_o(1, x) = h_o(1, x-1); % h_o at origin (i-1)
+            h_o_rel(1, x) = h_o(1, x) + U(1, x) * (U(1, x) - 2*C_theta(1, x)) / 2;
+
+            % shroud
+            h_o(M, x) = h_o(M, x-1); % h_o at origin (i-1)
+            h_o_rel(M, x) = h_o(M, x) + U(M, x) * (U(M, x) - 2*C_theta(M, x)) / 2;
+
+
+        else % relative enthalpies
+            % hub
+            h_o_rel(1, x) = h_o_rel(1, x-1);
+            h_o(1, x) = h_o_rel(1, x) - U(1, x) * (U(1, x) - 2*C_theta(1, x)) / 2;
+
+            % shroud
+            h_o_rel(M, x) = h_o_rel(M, x-1);
+            h_o(M, x) = h_o_rel(M, x) - U(M, x) * (U(M, x) - 2*C_theta(M, x)) / 2;
+
+        end
+    end
+
+
     
     for x = 2:N % from inlet to exit (inlet already defined)
         for r = 2:M-1
@@ -723,6 +747,18 @@ x_lower = (0.5 + widths_before_rotor)*blade_width;
 x_upper = x_lower + 2*blade_width;
 %xlim([x_lower x_upper]);
 colorbar;  % Add a color bar to indicate value scale
+
+% Entropy plot
+figure;
+contourf(X, R, S, 20);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Entropy');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
 
 % ------- Step X: Functions ---------
 
