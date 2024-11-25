@@ -516,7 +516,6 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
                     
                  % calculate other properties at streamline origin
                     U_streamline = U(r, x-1).* a_towards_shroud(r-1, x-1) + U(r-1, x-1).* b_towards_shroud(r-1, x-1); % U at origin (non-zero)
-                  
                  
                 else % if streamline goes towards hub
                     h_o_rel_streamline = h_o_rel(r+1, x-1).* a_towards_hub(r-1, x-1) + h_o_rel(r, x-1).* b_towards_hub(r-1, x-1); % h_o_rel at origin (i-1)
