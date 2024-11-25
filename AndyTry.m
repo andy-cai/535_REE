@@ -20,9 +20,9 @@ tan_alpha = tan(deg2rad(alpha));    % Convert angle to radians and calculate tan
 N = 6000 * (2*pi)/60; % [rad/s]
 
 delta_rC_theta_hub = 82.3; % [m^2/s]
-% delta_rC_theta_hub = 0;
+delta_rC_theta_hub = 0;
 delta_rC_theta_shroud = 84.4; % [m^2/s]
-% delta_rC_theta_shroud = 0;
+delta_rC_theta_shroud = 0;
 
 %% ------- Step 1: Grid -------
 
@@ -318,7 +318,8 @@ end
 
 %% Iteration Loop
 stop_condition = 1;
-conv = [];
+conv_Psi = [];
+conv_S = [];
 
 min_iter = 50;
 max_iter = 1000;
@@ -380,44 +381,6 @@ colorbar;  % Add a color bar to indicate value scale
 %}
 
 while (stop_condition && iteration < max_iter) || iteration <= min_iter
-    % if iteration == min_iter
-    %     % Streamlines
-    %     figure;
-    %     contourf(X, R, Psi_values, 10);  % Replace T with the desired output, 20 is the number of contour levels
-    %     xlabel('x (Axial Coordinate)');
-    %     ylabel('r (Radial Coordinate)');
-    %     title('Streamline Functions');
-    %     x_lower = (0.5 + widths_before_rotor)*blade_width;
-    %     x_upper = x_lower + 2*blade_width;
-    %     % xlim([x_lower x_upper]);
-    %     colorbar;  % Add a color bar to indicate value scale
-    % 
-    %     % Stagnation enthalpy plot
-    %     figure;
-    %     contourf(X, R, h_o, 10);  % Replace T with the desired output, 20 is the number of contour levels
-    %     xlabel('x (Axial Coordinate)');
-    %     ylabel('r (Radial Coordinate)');
-    %     title('Stagnation Enthalpy');
-    %     x_lower = (0.5 + widths_before_rotor)*blade_width;
-    %     x_upper = x_lower + 2*blade_width;
-    %     %xlim([x_lower x_upper]);
-    %     colorbar;  % Add a color bar to indicate value scale
-    % 
-    %     % Static pressure plot
-    %     figure;
-    %     contourf(X, R, P_static_global, 10);  % Replace T with the desired output, 20 is the number of contour levels
-    %     xlabel('x (Axial Coordinate)');
-    %     ylabel('r (Radial Coordinate)');
-    %     title('Static Pressure');
-    %     x_lower = (0.5 + widths_before_rotor)*blade_width;
-    %     x_upper = x_lower + 2*blade_width;
-    %     %xlim([x_lower x_upper]);
-    %     colorbar;  % Add a color bar to indicate value scale
-    % 
-    %     figure;
-    %     % semilogy(conv)
-    % 
-    % end
         
     % ------- Step 4: Calculate Vorticity -------
     % exclude hub, shroud, inlet = (2:M-1, 2:N)
@@ -639,26 +602,18 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     end
     
     % update convergence parameters
-    eps = norm(Psi_values - Psi_old);
-    eps = norm(S - S_old);
+    eps_Psi = norm(Psi_values - Psi_old);
+    eps_S = norm(S - S_old);
     
-    conv = [conv eps];
+    conv_Psi = [conv_Psi eps_Psi];
+    conv_S = [conv_S eps_S];
 
-    stop_condition = eps > 1e-5;
+    stop_condition = eps_Psi > 1e-5;
     iteration = iteration + 1;
 
 
 %% end of loop
 end 
-
-semilogy(conv)
-
-%% Questions for Prof:
-% 1. for the TE, do you set U = 0 when outside the blade and U =/= 0
-% when inside? Currently the prior value (at the TE) will have a U value,
-% and therefore the streamline has a U value, although h_o is assumed to be
-% constant.
-% 2. Confirm (rho*r)1/2 is the average of adjacent cells?
 
 
 %{
@@ -747,6 +702,15 @@ x_upper = x_lower + 2*blade_width;
 %xlim([x_lower x_upper]);
 colorbar;  % Add a color bar to indicate value scale
 
+
+% Rel enthalphy plot
+figure;
+contourf(X, R, h_o_rel, 10); 
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Relative Enthalpy');
+colorbar;  % Add a color bar to indicate value scale
+
 % Entropy plot
 figure;
 contourf(X, R, S, 20);  % Replace T with the desired output, 20 is the number of contour levels
@@ -757,6 +721,15 @@ x_lower = (0.5 + widths_before_rotor)*blade_width;
 x_upper = x_lower + 2*blade_width;
 %xlim([x_lower x_upper]);
 colorbar;  % Add a color bar to indicate value scale
+
+iteration
+
+figure;
+semilogy(conv_Psi); hold;
+semilogy(conv_S); 
+legend("Psi", "S");
+hold off;
+
 
 
 % ------- Step X: Functions ---------
