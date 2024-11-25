@@ -168,7 +168,6 @@ loss_global(:, (i_LE + 1):i_TE) = loss_factor;
  
 % Define the parameters
 M = num_points_r;  % Number of radial points from hub to shroud
-
 % Calculate the prescribed swirl increase at the trailing edge for each radial station
 delta_rC_theta_TE = zeros(M, 1);
 for r = 1:M
@@ -178,7 +177,9 @@ end
 %% Apply increase in whirl and distribute evenly across blade width
 for x = (i_LE + 1):i_TE  % Loop over axial points from L.E. to T.E.
     % Linearly interpolate in the x-direction between i_LE and i_TE
-    rC_theta(1:M, x) = rC_theta(1:M, x - 1) + delta_rC_theta_TE .* ((x - i_LE) / (i_TE - i_LE));
+    % % Note; delta_rC_theta_LE = 0 based on this interpolation and
+    % therefore is not added
+    rC_theta(1:M, x) = rC_theta(1:M, x) + delta_rC_theta_TE .* ((x - i_LE) / (i_TE - i_LE));
 end
 
 % Initialize U as zeros across the entire grid
@@ -326,51 +327,54 @@ min_iter = 50;
 max_iter = 1000;
 iteration = 1;
 
-plot_contour('h_o', X, R, h_o)
-plot_contour('P_o', X, R, P_o)
-plot_contour('h_o_rel', X, R, h_o_rel)
-plot_contour('P_o_rel', X, R, P_o_rel)
-plot_contour('P', X, R, P_static_global)
-plot_contour('T', X, R, T_static_global)
-plot_contour('S', X, R, S)
-plot_contour('V', X, R, V_global)
-
+% plot_contour('h_o', X, R, h_o)
+% plot_contour('P_o', X, R, P_o)
+% plot_contour('h_o_rel', X, R, h_o_rel)
+% plot_contour('P_o_rel', X, R, P_o_rel)
+% plot_contour('P', X, R, P_static_global)
+% plot_contour('T', X, R, T_static_global)
+% plot_contour('V', X, R, V_global)
 
 
 while (stop_condition && iteration < max_iter) || iteration <= min_iter
+    if iteration == min_iter
+        % Streamlines
+        figure;
+        contourf(X, R, Psi_values, 10);  % Replace T with the desired output, 20 is the number of contour levels
+        xlabel('x (Axial Coordinate)');
+        ylabel('r (Radial Coordinate)');
+        title('Streamline Functions');
+        x_lower = (0.5 + widths_before_rotor)*blade_width;
+        x_upper = x_lower + 2*blade_width;
+        % xlim([x_lower x_upper]);
+        colorbar;  % Add a color bar to indicate value scale
+        
+        % Stagnation enthalpy plot
+        figure;
+        contourf(X, R, h_o, 10);  % Replace T with the desired output, 20 is the number of contour levels
+        xlabel('x (Axial Coordinate)');
+        ylabel('r (Radial Coordinate)');
+        title('Stagnation Enthalpy');
+        x_lower = (0.5 + widths_before_rotor)*blade_width;
+        x_upper = x_lower + 2*blade_width;
+        %xlim([x_lower x_upper]);
+        colorbar;  % Add a color bar to indicate value scale
+        
+        % Static pressure plot
+        figure;
+        contourf(X, R, P_static_global, 10);  % Replace T with the desired output, 20 is the number of contour levels
+        xlabel('x (Axial Coordinate)');
+        ylabel('r (Radial Coordinate)');
+        title('Static Pressure');
+        x_lower = (0.5 + widths_before_rotor)*blade_width;
+        x_upper = x_lower + 2*blade_width;
+        %xlim([x_lower x_upper]);
+        colorbar;  % Add a color bar to indicate value scale
 
-    % Streamlines
-    figure;
-    contourf(X, R, Psi_values, 10);  % Replace T with the desired output, 20 is the number of contour levels
-    xlabel('x (Axial Coordinate)');
-    ylabel('r (Radial Coordinate)');
-    title('Streamline Functions');
-    x_lower = (0.5 + widths_before_rotor)*blade_width;
-    x_upper = x_lower + 2*blade_width;
-    % xlim([x_lower x_upper]);
-    colorbar;  % Add a color bar to indicate value scale
-    
-    % Stagnation enthalpy plot
-    figure;
-    contourf(X, R, h_o, 10);  % Replace T with the desired output, 20 is the number of contour levels
-    xlabel('x (Axial Coordinate)');
-    ylabel('r (Radial Coordinate)');
-    title('Stagnation Enthalpy');
-    x_lower = (0.5 + widths_before_rotor)*blade_width;
-    x_upper = x_lower + 2*blade_width;
-    %xlim([x_lower x_upper]);
-    colorbar;  % Add a color bar to indicate value scale
-    
-    % Static pressure plot
-    figure;
-    contourf(X, R, P_static_global, 10);  % Replace T with the desired output, 20 is the number of contour levels
-    xlabel('x (Axial Coordinate)');
-    ylabel('r (Radial Coordinate)');
-    title('Static Pressure');
-    x_lower = (0.5 + widths_before_rotor)*blade_width;
-    x_upper = x_lower + 2*blade_width;
-    %xlim([x_lower x_upper]);
-    colorbar;  % Add a color bar to indicate value scale
+        figure;
+        semilogy(conv)
+
+    end
         
     % ------- Step 4: Calculate Vorticity -------
     % exclude hub, shroud, inlet = (2:M-1, 2:N)
@@ -555,8 +559,8 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     end
 
     % stagnation and static static pressure from relative and stagnation properties
-    P_o(1:M, 2:N) = P_o_rel(1:M, 1:N) .* (T_o(1:M, 1:N) ./ T_o_rel(1:M, 1:N)).^(k_gamma);
-    P_static_global(1:M, 2:N) = P_o(1:M, 1:N) .* (T_static_global(1:M, 1:N) ./ T_o(1:M, 1:N)).^(k_gamma);
+    P_o(1:M, 2:N) = P_o_rel(1:M, 2:N) .* (T_o(1:M, 2:N) ./ T_o_rel(1:M, 2:N)).^(k_gamma);
+    P_static_global(1:M, 2:N) = P_o(1:M, 2:N) .* (T_static_global(1:M, 2:N) ./ T_o(1:M, 2:N)).^(k_gamma);
     
     % density throughout
     rho_global(1:M, 2:N) = P_static_global(1:M, 2:N) ./ (R_constant .* T_static_global(1:M, 2:N));
@@ -650,6 +654,7 @@ function plot_contour(name, X, R, f)
     xlabel('x (Axial Coordinate)');
     ylabel('r (Radial Coordinate)');
     title(name);
+    colorbar;
 
 end
 

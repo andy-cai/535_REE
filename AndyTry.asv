@@ -259,9 +259,10 @@ S(:, 1) = 0;
 % Initialize static temperature and pressure at inlet
 T_static_global(:, 1) = T_inlet_static;  % Set initial static temperature to inlet static temperature
 P_static_global(:, 1) = P_inlet_static;  % Set initial static pressure to inlet static pressure
+P_o(:, 1) = P_inlet_static .* (T_o1 ./ T_inlet_static).^(k_gamma);
+
 rho_global(:, 1) = P_static_global(:, 1) ./ (R_constant .* T_static_global(:, 1));
 
-P_o(:, 1) = P_inlet_static .* P_o(1:M, 1) .* (T_o1 ./ T_inlet_static).^(k_gamma);
 
 % note that I = H0_rel - 0.5*U^2 is constant throughout (Conservation of Rothalpy)
 
@@ -306,8 +307,8 @@ for x = 2:N
 end
 
 % stagnation and static static pressure from relative and stagnation properties
-P_o(1:M, 1:N) = P_o_rel(1:M, 1:N) .* (T_o(1:M, 1:N) ./ T_o_rel(1:M, 1:N)).^(k_gamma);
-P_static_global(1:M, 1:N) = P_o(1:M, 1:N) .* (T_static_global(1:M, 1:N) ./ T_o(1:M, 1:N)).^(k_gamma);
+P_o(1:M, 2:N) = P_o_rel(1:M, 2:N) .* (T_o(1:M, 2:N) ./ T_o_rel(1:M, 2:N)).^(k_gamma);
+P_static_global(1:M, 2:N) = P_o(1:M, 2:N) .* (T_static_global(1:M, 2:N) ./ T_o(1:M, 2:N)).^(k_gamma);
 
 % density throughout
 rho_global(1:M, 2:N) = P_static_global(1:M, 2:N) ./ (R_constant .* T_static_global(1:M, 2:N));
@@ -331,7 +332,6 @@ plot_contour('h_o_rel', X, R, h_o_rel)
 plot_contour('P_o_rel', X, R, P_o_rel)
 plot_contour('P', X, R, P_static_global)
 plot_contour('T', X, R, T_static_global)
-plot_contour('S', X, R, S)
 plot_contour('V', X, R, V_global)
 
 
@@ -649,6 +649,7 @@ function plot_contour(name, X, R, f)
     xlabel('x (Axial Coordinate)');
     ylabel('r (Radial Coordinate)');
     title(name);
+    colorbar;
 
 end
 
