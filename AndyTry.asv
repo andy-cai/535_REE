@@ -1,5 +1,39 @@
-% Francois-Xavier Duclos 261050648
-% 535 Project
+% ----- 535 Project -----
+%{
+Francois-Xavier Duclos  261050648
+Andy Cai                260956042
+Aidan Christoffersson   
+Athanasios Dollas       
+
+Overview
+The following code applies the radial equilibrium equation and finite
+difference method to approximate the solution of a 3D flow. Given
+rotor geometry, operating speed and inlet conditions, the code outputs
+velocity at any point before/inside/after the axial compressor, as well as
+static pressure and temperature. These are used to calculate power
+incidence angles, turning angle and degree of reaction.
+
+Expected Behaviour
+If solving via simplified REE (assuming small C_r), we would expect to see:
+
+- Tangential velocities resembling something between a free vortex, with
+C_theta = Const/r, and a forced vortex, with C_theta = Const*r
+
+m_dot = 30.4 kg/s
+c_x = 136 m/s
+Work = 1.5 MW
+C_theta(shroud, LE) = 78.6 m/s
+C_theta(hub, LE) = 87.3 m/s
+C_theta(hub, TE) = 262 m/s
+R = 0.382
+Isentro
+Twist = 32.75 - 62.6 = -29.85
+Turn = 55.15 - 8.64 = 46.51
+
+Additional Discussion
+
+
+%}
 
 %% ------- Step 0: Variable identification -------
 
@@ -20,7 +54,13 @@ tan_alpha = tan(deg2rad(alpha));    % Convert angle to radians and calculate tan
 N = 6000 * (2*pi)/60; % [rad/s]
 
 delta_rC_theta_hub = 82.3; % [m^2/s]
+<<<<<<< Updated upstream
 delta_rC_theta_shroud = 84.4; % [m^2/s]
+=======
+%delta_rC_theta_hub = 0;
+delta_rC_theta_shroud = 84.4; % [m^2/s]
+%delta_rC_theta_shroud = 0;
+>>>>>>> Stashed changes
 
 %% ------- Step 1: Grid -------
 
@@ -328,7 +368,8 @@ end
 
 %% Iteration Loop
 stop_condition = 1;
-conv = [];
+conv_Psi = [];
+conv_S = [];
 
 min_iter = 50;
 max_iter = 1000;
@@ -537,25 +578,22 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     end
     
     % update convergence parameters
+<<<<<<< Updated upstream
     eps = norm(Psi_values - Psi_old);
+=======
+    eps_Psi = norm(Psi_values - Psi_old);
+    eps_S = norm(S - S_old);
+>>>>>>> Stashed changes
     
-    conv = [conv eps];
+    conv_Psi = [conv_Psi eps_Psi];
+    conv_S = [conv_S eps_S];
 
-    stop_condition = eps > 1e-5;
+    stop_condition = eps_Psi > 1e-5;
     iteration = iteration + 1;
 
 
 %% end of loop
 end 
-
-semilogy(conv)
-
-%% Questions for Prof:
-% 1. for the TE, do you set U = 0 when outside the blade and U =/= 0
-% when inside? Currently the prior value (at the TE) will have a U value,
-% and therefore the streamline has a U value, although h_o is assumed to be
-% constant.
-% 2. Confirm (rho*r)1/2 is the average of adjacent cells?
 
 
 %{
@@ -612,6 +650,72 @@ x_upper = x_lower + 2*blade_width;
 %xlim([x_lower x_upper]);
 colorbar;  % Add a color bar to indicate value scale
 
+<<<<<<< Updated upstream
+=======
+% C_x
+figure;
+contourf(X, R, C_x, 10);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('C_x');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+% C_r
+figure;
+contourf(X, R, C_r, 10);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('C_r');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+
+figure;
+contourf(X, R, C_m, 10);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('C_m');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+
+% Rel enthalphy plot
+figure;
+contourf(X, R, h_o_rel, 10); 
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Relative Enthalpy');
+colorbar;  % Add a color bar to indicate value scale
+
+% Entropy plot
+figure;
+contourf(X, R, S, 20);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Entropy');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+iteration
+
+figure;
+semilogy(conv_Psi); hold;
+semilogy(conv_S); 
+legend("Psi", "S");
+hold off;
+
+
+
+>>>>>>> Stashed changes
 % ------- Step X: Functions ---------
 
 function Psi = calculateInitPsi(r, r_h, r_s)

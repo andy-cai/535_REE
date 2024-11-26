@@ -1,5 +1,39 @@
-% Francois-Xavier Duclos 261050648
-% 535 Project
+% ----- 535 Project -----
+%{
+Francois-Xavier Duclos  261050648
+Andy Cai                260956042
+Aidan Christoffersson   
+Athanasios Dollas       
+
+Overview
+The following code applies the radial equilibrium equation and finite
+difference method to approximate the solution of a 3D flow. Given
+rotor geometry, operating speed and inlet conditions, the code outputs
+velocity at any point before/inside/after the axial compressor, as well as
+static pressure and temperature. These are used to calculate power
+incidence angles, turning angle and degree of reaction.
+
+Expected Behaviour
+If solving via simplified REE (assuming small C_r), we would expect to see:
+
+m_dot = 30.4 kg/s
+c_x = 136 m/s
+Work = 1.5 MW
+C_theta(shroud, LE) = 78.6 m/s
+C_theta(hub, LE) = 87.3 m/s
+C_theta(shroud, LE) = 235.8 m/s
+C_theta(hub, TE) = 262 m/s
+Flow velocities at the hub are calculated assuming free vortex.
+
+R = 0.382
+Isentropic pressure ratio = 1.68
+Twist = 32.75 - 62.6 = -29.85
+Turn = 55.15 - 8.64 = 46.51
+
+Additional Discussion
+
+
+%}
 
 %% ------- Step 0: Variable identification -------
 
@@ -20,7 +54,13 @@ tan_alpha = tan(deg2rad(alpha));    % Convert angle to radians and calculate tan
 N = 6000 * (2*pi)/60; % [rad/s]
 
 delta_rC_theta_hub = 82.3; % [m^2/s]
+<<<<<<< Updated upstream
 delta_rC_theta_shroud = 84.4; % [m^2/s]
+=======
+%delta_rC_theta_hub = 0;
+delta_rC_theta_shroud = 84.4; % [m^2/s]
+%delta_rC_theta_shroud = 0;
+>>>>>>> Stashed changes
 
 %% ------- Step 1: Grid -------
 
@@ -275,6 +315,7 @@ I_inlet = h_o1_rel - (0.5 * U(1:M, 1).^2);
 % Move from 1 -> N updating using common calc block
 % note that I and velocities are already calculated
 
+<<<<<<< Updated upstream
 % Commenting out as these were shifted up
 %{
 % these calcs are not required, but retained to match notes for clarity
@@ -282,6 +323,11 @@ V_theta_global(1:M, N) = U(1:M, N) - C_theta(1:M, N);
 Beta_global(1:M, N) = atan(V_theta_global(1:M, N) ./ C_m(1:M, N));
 V_global(1:M, N) = sqrt(C_m(1:M, N).^2 + V_theta_global(1:M, N).^2);
 %}
+=======
+% relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
+h_o_rel(1:M, 2:N) = h_o1_rel + 0.5 * U(1:M, 2:N).^2; % Conservation of Rothalpy, U(1, 1) = 0
+% Skeptical that this is correct
+>>>>>>> Stashed changes
 
 % relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
 h_o_rel(1:M, 2:N) = I_inlet + 0.5 * U(1:M, 2:N).^2;
