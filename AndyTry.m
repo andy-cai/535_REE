@@ -751,28 +751,52 @@ i_ms = M/2;
 % TE Radial Velocity
 C_R_TE = [C_r(1, i_TE);
           C_r(i_ms, i_TE);
-          C_r(M, i_TE)]
+          C_r(M, i_TE)];
 
 % LE Incidence (converting to deg)
 Beta_LE = [Beta_global(1, i_LE);
           Beta_global(i_ms, i_LE);
-          Beta_global(M, i_LE)] .* (180 / pi)
+          Beta_global(M, i_LE)] .* (180 / pi);
 
 % Turning (deflection) (converting to deg)
 Beta_TE = [Beta_global(1, i_TE);
           Beta_global(i_ms, i_TE);
-          Beta_global(M, i_TE)] .* (180 / pi)
+          Beta_global(M, i_TE)] .* (180 / pi);
 
-turning = Beta_TE - Beta_LE
+turning = Beta_TE - Beta_LE;
 
 % Static P Rise
-
+% Static P at leading edge
+static_P_LE = [P_static_global(1, i_LE);
+                P_static_global(i_ms, i_LE);
+                P_static_global(M, i_LE)];
+% Static P at trailing edge
+static_P_TE = [P_static_global(1, i_TE);
+                P_static_global(i_ms, i_TE);
+                P_static_global(M, i_TE)];
+% Static P rise is the difference between TE and LE
+static_P_rise = static_P_TE - static_P_LE;
 
 % Total P Rise
+% Total P at leading edge
+dynamic_P_LE = [0.5 * C_m(1, i_LE)^2 / c_p;
+                0.5 * C_m(i_ms, i_LE)^2 / c_p;
+                0.5 * C_m(M, i_LE)^2 / c_p];
+total_P_LE = static_P_LE + dynamic_P_LE;
 
+% Total P at trailing edge
+dynamic_P_TE = [0.5 * C_m(1, i_TE)^2 / c_p;
+                0.5 * C_m(i_ms, i_TE)^2 / c_p;
+                0.5 * C_m(M, i_TE)^2 / c_p];
+total_P_TE = static_P_TE + dynamic_P_TE;
 
-% Reaction
+% Total P rise is the difference between TE and LE
+total_P_rise = total_P_TE - total_P_LE;
 
+% Reaction at LE, midpoint, TE
+Reaction = 0.5 * [1 + delta_rC_theta_hub/U(1, i_LE);
+                    1 + (rC_theta(i_ms, i_TE)-rC_theta(i_ms, i_LE)/U(1, i_LE));
+                    1 + delta_rC_theta_shroud/U(M, i_LE)]; 
 
 % Power Absorbed
 
