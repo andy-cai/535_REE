@@ -20,9 +20,9 @@ tan_alpha = tan(deg2rad(alpha));    % Convert angle to radians and calculate tan
 N = 6000 * (2*pi)/60; % [rad/s]
 
 delta_rC_theta_hub = 82.3; % [m^2/s]
-delta_rC_theta_hub = 0;
+% delta_rC_theta_hub = 0;
 delta_rC_theta_shroud = 84.4; % [m^2/s]
-delta_rC_theta_shroud = 0;
+% delta_rC_theta_shroud = 0;
 
 %% ------- Step 1: Grid -------
 
@@ -40,13 +40,18 @@ num_points_x = 1+num_points_rotor*(widths_before_rotor+widths_after_rotor+1); % 
 
 x_values = linspace(x_min, x_max, num_points_x);
 dx = x_values(2) - x_values(1); % Spacing in the x direction
-dr = dx; % Spacing in the r direction
-num_points_r = 1 + blade_width/dr;
 
+dr = dx; % Spacing in the r direction
+num_points_r = round(1 + (r_s - r_h) / dr, 0);
 
 % Generate grid points in x and r directions
 r_values = linspace(r_h, r_s, num_points_r);
 
+dr_calc = r_values(2) - r_values(1);
+
+if round(dr_calc, 5) ~= round(dr, 5)
+    error("Only use even num_points in the rotor to match cell sizing perfectly")
+end
 
 % Create mesh grid for x and r coordinates
 [X, R] = meshgrid(x_values, r_values);
@@ -82,14 +87,10 @@ m_dot = rho_inlet * C_x_inlet * A_inlet;                    % Mass flow rate
 H0_inlet = c_p * T_inlet_static + (C_x_inlet^2) / 2;        % Total enthalpy at inlet
 
 % Initialize Psi_values as a 2D array to store Psi(x, r) for each grid point
-Psi_values = zeros(num_points_r, num_points_x);
+% Psi_values = zeros(num_points_r, num_points_x);
 % Nested loop to iterate through each (x, r) point and calculate Psi
-for r = 1:num_points_r
-    for x = 1:num_points_x
-        Psi_values(r, x) = calculateInitPsi(R(r, x), r_h, r_s);
-    end
-end
-clear r
+
+Psi_values = (R.^2 - r_h^2)./ (r_s^2 - r_h^2);
 
 % ------- Calculating Velocities -------
 % Initialize matrices to store velocities
@@ -141,8 +142,7 @@ C_r(2:num_points_r-1, 2:num_points_x-1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:n
 C_m = sqrt(C_r.^2 + C_x.^2);
 
 % Initialize rC_theta
-rC_theta = zeros(num_points_r, num_points_x);
-rC_theta(1:num_points_r, :) = R(1:num_points_r, :) .* C_x_inlet * tan_alpha;
+rC_theta = R .* C_x_inlet * tan_alpha;
 
 % ----- Initialize Loss Factor -----
 % Define the x positions of the leading edge (LE) and trailing edge (TE)
@@ -178,8 +178,13 @@ for x = (i_LE + 1):i_TE  % Loop over axial points from L.E. to T.E.
     % Linearly interpolate in the x-direction between i_LE and i_TE
     % % Note; delta_rC_theta_LE = 0 based on this interpolation and
     % therefore is not added
-    rC_theta(1:M, x) = rC_theta(1:M, x) + delta_rC_theta_TE .* ((x - i_LE) / (i_TE - i_LE));
+    rC_theta(1:M, x) = rC_theta(1:M, i_LE) + delta_rC_theta_TE .* ((x - i_LE) / (i_TE - i_LE));
 end
+
+% ensure conservation of momentum by tracing rC_theta across subsequent cells
+%% TOGGLE THIS
+% rC_theta(1:M, i_TE+1:end) = repmat(rC_theta(1:M, i_TE), 1, num_points_x - i_TE);
+%% TOGGLE THIS
 
 % Initialize U as zeros across the entire grid
 U = zeros(num_points_r, num_points_x);
@@ -615,7 +620,6 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
 %% end of loop
 end 
 
-
 %{
 [X, R] = meshgrid(x_values, r_values);  % Create grid of x and r values
 % Surface plot
@@ -730,6 +734,52 @@ semilogy(conv_S);
 legend("Psi", "S");
 hold off;
 
+format default
+%% check outputs
+m_dot
+C_x(:, 1)
+
+
+%% outputs
+
+% hub
+% midspan
+% shroud
+
+i_ms = M/2;
+
+% TE Radial Velocity
+C_R_TE = [C_r(1, i_TE);
+          C_r(i_ms, i_TE);
+          C_r(M, i_TE)]
+
+% LE Incidence (converting to deg)
+Beta_LE = [Beta_global(1, i_LE);
+          Beta_global(i_ms, i_LE);
+          Beta_global(M, i_LE)] .* (180 / pi)
+
+% Turning (deflection) (converting to deg)
+Beta_TE = [Beta_global(1, i_TE);
+          Beta_global(i_ms, i_TE);
+          Beta_global(M, i_TE)] .* (180 / pi)
+
+turning = Beta_TE - Beta_LE
+
+% Static P Rise
+
+
+% Total P Rise
+
+
+% Reaction
+
+
+% Power Absorbed
+
+
+%
+
+
 
 
 % ------- Step X: Functions ---------
@@ -743,17 +793,6 @@ function plot_contour(name, X, R, f)
     title(name);
     colorbar;
 
-end
-
-function Psi = calculateInitPsi(r, r_h, r_s)
-    % This function calculates Psi based on the radial position r,
-    % the hub radius r_h, and the shroud radius r_s.
-    Psi = (r^2 - r_h^2) / (r_s^2 - r_h^2);
-
-    % Ensure Psi is zero when r is exactly equal to r_h
-    if r == r_h
-        Psi = 0;
-    end
 end
 
 
