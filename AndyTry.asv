@@ -325,6 +325,8 @@ end
 stop_condition = 1;
 conv_Psi = [];
 conv_S = [];
+conv_rho = [];
+conv_omega = [];
 
 min_iter = 50;
 max_iter = 1000;
@@ -407,9 +409,13 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     
     clear term1 term2 term3 denom
     
-    % set entropy for iteration to zero
-    S_old = S; % store last iteration for convergence
+    % store last iteration for convergence
+    S_old = S; 
     Psi_old = Psi_values;
+    rho_old = rho_global;
+    omega_old = omega;
+    
+    % set entropy for iteration to zero
     S(:, :) = 0;
     
     % ------- Step 5: Update Psi -------
@@ -609,9 +615,14 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     % update convergence parameters
     eps_Psi = norm(Psi_values - Psi_old);
     eps_S = norm(S - S_old);
+    eps_rho = norm(rho_global - rho_old);
+    eps_omega = norm(omega - omega_old);
     
     conv_Psi = [conv_Psi eps_Psi];
     conv_S = [conv_S eps_S];
+
+    conv_rho = [conv_rho eps_rho];
+    conv_omega = [conv_omega eps_omega];
 
     stop_condition = eps_Psi > 1e-5;
     iteration = iteration + 1;
@@ -640,6 +651,7 @@ colorbar;  % Add a color bar to indicate value scale
 %}
 
 %% ----- Plots -----
+% %{
 % Streamlines
 figure;
 contourf(X, R, Psi_values, 10);  % Replace T with the desired output, 20 is the number of contour levels
@@ -717,7 +729,7 @@ colorbar;  % Add a color bar to indicate value scale
 
 % Entropy plot
 figure;
-contourf(X, R, S, 20);  % Replace T with the desired output, 20 is the number of contour levels
+contourf(X, R, S, 10);  % Replace T with the desired output, 20 is the number of contour levels
 xlabel('x (Axial Coordinate)');
 ylabel('r (Radial Coordinate)');
 title('Entropy');
@@ -725,13 +737,18 @@ x_lower = (0.5 + widths_before_rotor)*blade_width;
 x_upper = x_lower + 2*blade_width;
 %xlim([x_lower x_upper]);
 colorbar;  % Add a color bar to indicate value scale
+%}
 
 iteration
 
 figure;
 semilogy(conv_Psi); hold;
 semilogy(conv_S); 
-legend("Psi", "S");
+semilogy(conv_rho); 
+semilogy(conv_omega); 
+
+
+legend("Psi", "S", "rho", "omega");
 hold off;
 
 format default
@@ -748,22 +765,36 @@ C_x(:, 1)
 
 i_ms = M/2;
 
+Alpha_global = atan(C_theta ./ C_x) .* (180 / pi);
+Beta_global = Beta_global .* (180 / pi);
+
 % TE Radial Velocity
 C_R_TE = [C_r(1, i_TE);
           C_r(i_ms, i_TE);
-          C_r(M, i_TE)];
+          C_r(M, i_TE)]
 
 % LE Incidence (converting to deg)
 Beta_LE = [Beta_global(1, i_LE);
           Beta_global(i_ms, i_LE);
-          Beta_global(M, i_LE)] .* (180 / pi);
+          Beta_global(M, i_LE)]
 
 % Turning (deflection) (converting to deg)
 Beta_TE = [Beta_global(1, i_TE);
           Beta_global(i_ms, i_TE);
-          Beta_global(M, i_TE)] .* (180 / pi);
+          Beta_global(M, i_TE)]
 
-turning = Beta_TE - Beta_LE;
+metal_LE = [43.6167; 45.5652; 48.0185];
+
+Incidence_LE = Beta_LE - metal_LE
+
+Twist = Beta_LE - Beta_TE
+
+Turning = [Alpha_global(1, i_TE);
+          Alpha_global(i_ms, i_TE);
+          Alpha_global(M, i_TE)] - [Alpha_global(1, i_LE);
+          Alpha_global(i_ms, i_LE);
+          Alpha_global(M, i_LE)] 
+
 
 % Static P Rise
 % Static P at leading edge
@@ -775,30 +806,60 @@ static_P_TE = [P_static_global(1, i_TE);
                 P_static_global(i_ms, i_TE);
                 P_static_global(M, i_TE)];
 % Static P rise is the difference between TE and LE
-static_P_rise = static_P_TE - static_P_LE;
+static_P_rise = static_P_TE - static_P_LE
 
 % Total P Rise
 % Total P at leading edge
-dynamic_P_LE = [0.5 * C_m(1, i_LE)^2 / c_p;
-                0.5 * C_m(i_ms, i_LE)^2 / c_p;
-                0.5 * C_m(M, i_LE)^2 / c_p];
-total_P_LE = static_P_LE + dynamic_P_LE;
+P_o_LE = [P_o(1, i_LE);
+                P_o(i_ms, i_LE);
+                P_o(M, i_LE)];
 % Total P at trailing edge
-dynamic_P_TE = [0.5 * C_m(1, i_LE)^2 / c_p;
-                0.5 * C_m(i_ms, i_LE)^2 / c_p;
-                0.5 * C_m(M, i_LE)^2 / c_p];
-total_P_TE = static_P_TE + dynamic_P_TE
+P_o_TE = [P_o(1, i_TE);
+        P_o(i_ms, i_TE);
+        P_o(M, i_TE)];
+
 % Total P rise is the difference between TE and LE
+total_P_rise = (P_o_TE - P_o_LE)
 
 % Reaction at LE, midpoint, TE
 Reaction = 0.5 * [1 + delta_rC_theta_hub/U(1, i_LE);
-                    1 + (rC_theta(i_ms, i_TE)-rC_theta(i_ms, i_LE)/U(1, i_LE));
-                    1 + delta_rC_theta_shroud/U(M, i_LE)]; 
+                    1 + (0.5*(delta_rC_theta_hub + delta_rC_theta_shroud)/U(1, i_LE));
+                    1 + delta_rC_theta_shroud/U(M, i_LE)]
+
+%% confirm above formula or use below:
+
+U_123 = [U(1, i_LE);
+          U(i_ms, i_LE);
+          U(M, i_LE)];
+
+C_theta_LE = [C_theta(1, i_LE);
+          C_theta(i_ms, i_LE);
+          C_theta(M, i_LE)];
+
+C_theta_TE = [C_theta(1, i_TE);
+          C_theta(i_ms, i_TE);
+          C_theta(M, i_TE)];
+
+delta_C_theta = C_theta_TE - C_theta_LE
+
+% delta_C_theta .* [R(1, i_LE); R(i_ms, i_LE); R(M, i_LE)]
+
+H_LE = static_P_LE ./ [rho_global(1, i_LE); rho_global(i_ms, i_LE); rho_global(M, i_LE)];
+H_TE = static_P_TE ./ [rho_global(1, i_TE); rho_global(i_ms, i_TE); rho_global(M, i_TE)];
+
+delta_H = H_TE - H_LE;
+
+% R = static P / Energy
+Reaction = delta_H ./ (U_123 .* delta_C_theta)
 
 % Power Absorbed
+W = m_dot * U_123 .* delta_C_theta / 10^6 % MW
+disp("Power absorbed is in MW")
 
-
-%
+% Static P ratio
+rP_static = static_P_TE ./ static_P_LE
+% Total P ratio
+rP_o = static_P_TE ./ static_P_LE
 
 
 
