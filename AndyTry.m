@@ -29,8 +29,8 @@ delta_rC_theta_shroud = 84.4; % [m^2/s]
 blade_width = 0.1;      % Blade width (Specified for this system)
 
 % Define the x and r range based on blade width
-widths_before_rotor = 4;     % Ensure 4 blade widths before rotor
-widths_after_rotor = 4;      % Ensure 4 blade widths before rotor
+widths_before_rotor = 5;     % Ensure 4 blade widths before rotor
+widths_after_rotor = 5;      % Ensure 4 blade widths before rotor
 
 % Define size of the grid
 x_min = 0;               
@@ -680,7 +680,6 @@ xlabel('x (Axial Coordinate)');
 ylabel('r (Radial Coordinate)');
 title('C_x');
 x_lower = (0.5 + widths_before_rotor)*blade_width;
-x_upper = x_lower + 2*blade_width;
 %xlim([x_lower x_upper]);
 colorbar;  % Add a color bar to indicate value scale
 
@@ -753,23 +752,35 @@ C_R_TE = [C_r(1, i_TE);
           C_r(i_ms, i_TE);
           C_r(M, i_TE)]
 
-% LE Incidence (converting to deg)
+% LE Incidence 
+Beta_global = Beta_global .* (180 / pi)
+% (converting to deg)
+
 Beta_LE = [Beta_global(1, i_LE);
           Beta_global(i_ms, i_LE);
-          Beta_global(M, i_LE)] .* (180 / pi)
+          Beta_global(M, i_LE)]
+
+
+% metal_LE = Beta_LE
+
+Incidence_LE = Beta_LE - metal_LE
 
 % Turning (deflection) (converting to deg)
 Beta_TE = [Beta_global(1, i_TE);
           Beta_global(i_ms, i_TE);
-          Beta_global(M, i_TE)] .* (180 / pi)
+          Beta_global(M, i_TE)]
 
-turning = Beta_TE - Beta_LE
+turning = Beta_LE - Beta_TE %% idk if this is right
 
 % Static P Rise
-
+Static_P_rise = [P_static_global(1, i_TE) - P_static_global(1, i_LE);
+                 P_static_global(i_ms, i_TE) - P_static_global(i_ms, i_LE);
+                 P_static_global(M, i_TE) - P_static_global(M, i_LE)]
 
 % Total P Rise
-
+P_o_rise = [P_o(1, i_TE) - P_o(1, i_LE);
+                 P_o(i_ms, i_TE) - P_o(i_ms, i_LE);
+                 P_o(M, i_TE) - P_o(M, i_LE)]
 
 % Reaction
 
@@ -777,7 +788,6 @@ turning = Beta_TE - Beta_LE
 % Power Absorbed
 
 
-%
 
 
 
