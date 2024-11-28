@@ -22,11 +22,11 @@ N = 6000 * (2*pi)/60; % [rad/s]
 delta_rC_theta_hub = 82.3; % [m^2/s]
 delta_rC_theta_shroud = 84.4; % [m^2/s]
 
-delta_rC_theta_hub = 0;
-delta_rC_theta_shroud = 0;
+% delta_rC_theta_hub = 0;
+% delta_rC_theta_shroud = 0;
 
-% delta_rC_theta_hub = 100; % [m^2/s]
-% delta_rC_theta_shroud = 120; % [m^2/s]
+% delta_rC_theta_hub = 140; % [m^2/s]
+% delta_rC_theta_shroud = 160; % [m^2/s]
 
 
 %% ------- Step 1: Grid -------
@@ -40,7 +40,7 @@ widths_after_rotor = 4;      % Ensure 4 blade widths before rotor
 % Define size of the grid
 x_min = 0;               
 x_max = (widths_before_rotor + widths_after_rotor + 1) * blade_width;
-num_points_rotor = 10;        % Number of grid points within blade
+num_points_rotor = 20;        % Number of grid points within blade
 num_points_x = 1+num_points_rotor*(widths_before_rotor+widths_after_rotor+1); % Ensure LE, TE sit exactly on grid point
 
 x_values = linspace(x_min, x_max, num_points_x);
@@ -251,7 +251,7 @@ T_o_rel(:, 1) = T_o1_rel;
 h_o_rel(:, 1) = h_o1_rel;
 
 % Calculate P_o1_rel for each radial position j
-P_o1_rel = P_inlet_static .* (T_o1_rel ./ T_o1).^k_gamma;
+P_o1_rel = P_inlet_static .* (T_o1_rel ./ T_inlet_static).^k_gamma;
 
 % populate initial column of relative pressure
 P_o_rel(:, 1) = P_o1_rel;
@@ -279,11 +279,11 @@ for x = 2:N % from inlet to exit (inlet already defined)
     if x <= i_LE || x > i_TE % for values before LE or after TE, use stagnation enthalpy
 
         h_o(:, x) = h_o(:, x-1); % h_o at origin (i-1)
-        h_o_rel(:, x) = h_o(:, x) + U(:, x) * (U(:, x) - 2*C_theta(:, x)) / 2;
+        h_o_rel(:, x) = h_o(:, x) + U(:, x) .* (U(:, x) - 2.*C_theta(:, x)) ./ 2;
 
     else % relative enthalpies
         h_o_rel(:, x) = h_o_rel(:, x-1);
-        h_o(:, x) = h_o_rel(:, x) - U(:, x) * (U(:, x) - 2*C_theta(:, x)) / 2;
+        h_o(:, x) = h_o_rel(:, x) - U(:, x) .* (U(:, x) - 2.*C_theta(:, x)) ./ 2;
     end
 end
 
@@ -291,27 +291,10 @@ end
 T_o(1:M, 2:N) = h_o(1:M, 2:N) ./ c_p;
 T_o_rel(1:M, 2:N) = h_o_rel(1:M, 2:N) ./ c_p;
 
-
-
-% stagnation temperatures from velocities and T_o_rel
-T_o(1:M, 2:N) = T_o_rel(1:M, 2:N) - (U(1:M, 2:N) .* (U(1:M, 2:N) - 2.*C_theta(1:M, 2:N)) ./ (2 * c_p));
-
-% constant T_o after TE (no work)
-T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
-
-% constant T_o = T_o after TE (no work, no U)
-% T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
-
-% constant T_o_rel = T_o after TE (no work, no U)
-T_o_rel(1:M, (i_TE+1):N) = T_o(1:M, (i_TE+1):N);
-
-h_o(1:M, 2:N) = c_p .* T_o(1:M, 2:N);
-h_o_rel(1:M, 2:N) = c_p .* T_o_rel(1:M, 2:N);
-
 h(1:M, 1:N) = h_o_rel(1:M, 1:N) - 0.5 .* V_global(1:M, 1:N).^2;
 
 % static properties from stagnation and velocities
-T_static_global(1:M, 2:N) = T_o(1:M, 2:N) - (V_global(1:M, 2:N).^2 ./ (2 * c_p));
+T_static_global(1:M, 2:N) = T_o_rel(1:M, 2:N) - (V_global(1:M, 2:N).^2 ./ (2 * c_p));
 
 
 % finding pressures
@@ -320,11 +303,11 @@ for x = 2:N
     P_o_rel_ideal(1:M, x) = P_o_rel_ideal(1:M, x-1) .* ((T_o_rel(1:M, x) ./ T_o_rel(1:M, x-1)).^k_gamma);
     % relative pressure using loss coeff
     P_o_rel(1:M, x) = P_o_rel_ideal(1:M, x) - loss_global(1:M, x) .* (P_o_rel(1:M, x-1) - P_static_global(1:M, x-1));
-end
 
-% stagnation and static static pressure from relative and stagnation properties
-P_o(1:M, 2:N) = P_o_rel(1:M, 2:N) .* (T_o(1:M, 2:N) ./ T_o_rel(1:M, 2:N)).^(k_gamma);
-P_static_global(1:M, 2:N) = P_o(1:M, 2:N) .* (T_static_global(1:M, 2:N) ./ T_o(1:M, 2:N)).^(k_gamma);
+    % stagnation and static static pressure from relative and stagnation properties
+    P_o(1:M, x) = P_o_rel(1:M, x) .* (T_o(1:M, x) ./ T_o_rel(1:M, x)).^(k_gamma);
+    P_static_global(1:M, x) = P_o(1:M, x) .* (T_static_global(1:M, x) ./ T_o(1:M, x)).^(k_gamma);
+end
 
 % density throughout
 rho_global(1:M, 2:N) = P_static_global(1:M, 2:N) ./ (R_constant .* T_static_global(1:M, 2:N));
@@ -345,7 +328,7 @@ min_iter = 50;
 max_iter = 1000;
 iteration = 1;
 
-% %{
+%{
  % Streamlines
 figure;
 contourf(X, R, Psi_values, 20);  % Replace T with the desired output, 20 is the number of contour levels
@@ -363,6 +346,26 @@ contourf(X, R, S, 20);  % Replace T with the desired output, 20 is the number of
 xlabel('x (Axial Coordinate)');
 ylabel('r (Radial Coordinate)');
 title('Entropy');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+figure;
+contourf(X, R, C_x, 20);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Axial Velocity');
+x_lower = (0.5 + widths_before_rotor)*blade_width;
+x_upper = x_lower + 2*blade_width;
+%xlim([x_lower x_upper]);
+colorbar;  % Add a color bar to indicate value scale
+
+figure;
+contourf(X, R, C_r, 20);  % Replace T with the desired output, 20 is the number of contour levels
+xlabel('x (Axial Coordinate)');
+ylabel('r (Radial Coordinate)');
+title('Radial Velocity');
 x_lower = (0.5 + widths_before_rotor)*blade_width;
 x_upper = x_lower + 2*blade_width;
 %xlim([x_lower x_upper]);
@@ -433,7 +436,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     
     % ------- Step 5: Update Psi -------
     
-    %% -> currently assuming the average of adjacent cells ***** CHECK ******. This alignes with instructions
+    %% -> currently assuming the average of adjacent cells
     
     % computing adjacent averages of rho*r
     rho_r_plus_x = (rho_global(2:M-1, 3:N).*R(2:M-1, 3:N) + rho_global(2:M-1, 2:N-1).* R(2:M-1, 2:N-1)) / 2; % average of rho*r at cell and at next cell in x
@@ -460,7 +463,19 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     % ------- Step 6: Calculate velocities -------
         % (inlet remains constant)
         % repeat of prior calcs
-        
+    
+    % Hub, inlet. Modified as there are no points below, or left of, (1, 1)
+    C_x(1, 1) = m_dot / ((2 * pi * rho_inlet) .* R(1, 1)) * (Psi_values(2, 1) - Psi_values(1, 1)) / (dr);
+    C_r(1, 1) = -m_dot / (2 * pi * rho_inlet * R(1, 1)) * (Psi_values(1, 2) - Psi_values(1, 1)) / (dx);
+
+    % Shroud, inlet. Modified as there are no points above, or left of, (num_points_r, 1)
+    C_x(num_points_r, 1) = m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 1) - Psi_values(num_points_r - 1, 1)) / (dr);
+    C_r(num_points_r, 1) = -m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 2) - Psi_values(num_points_r, 1)) / (dx);
+
+    % Inlet. Modified as there are no points left of the column
+    C_x(2:num_points_r-1, 1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(3:num_points_r, 1) - Psi_values(1:num_points_r-2, 1)) ./ (2 * dr);
+    C_r(2:num_points_r-1, 1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(2:num_points_r-1, 2) - Psi_values(2:num_points_r-1, 1)) ./ (dx);
+
     % Hub, outlet. Modified as there are no points below, or right of, (1, num_points_x)
     C_x(1, num_points_x) = m_dot / (2 * pi * rho_global(1, num_points_x) * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
     % Why is there a '+' here until end... Suspicious is something is missing?
@@ -517,7 +532,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     
     %% Note: There has got to be a cleaner way to do this -_-
 
-    %% HUB / SHROUD
+    % HUB / SHROUD
     for x = 2:N % from inlet to exit (inlet already defined)
         if x <= i_LE || x > i_TE % for values before LE or after TE, use stagnation enthalpy
 
@@ -543,7 +558,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     end
 
 
-    
+   
     for x = 2:N % from inlet to exit (inlet already defined)
         for r = 2:M-1
     
@@ -594,6 +609,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     
     % V_theta_global is constant (U & C_theta don't change)
     Beta_global(1:M, 2:N) = atan(V_theta_global(1:M, 2:N) ./ C_m(1:M, 2:N));
+   
     V_global(1:M, 2:N) = sqrt(C_m(1:M, 2:N).^2 + V_theta_global(1:M, 2:N).^2);
     
     % stagnation (rel & abs) temperatures from h_o & h_o_rel
@@ -601,7 +617,10 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     T_o(1:M, 2:N) = h_o(1:M, 2:N) ./ c_p;
     
     % static properties from stagnation and velocities
-    T_static_global(1:M, 2:N) = T_o(1:M, 2:N) - (V_global(1:M, 2:N).^2 ./ (2 * c_p));
+    T_static_global(1:M, 2:N) = T_o_rel(1:M, 2:N) - (V_global(1:M, 2:N).^2 ./ (2 * c_p));
+    
+    % preventing imaginary numbers and premature divergence
+    % T_static_global(T_static_global < 0) = 0;
     
     % sweeping through domain to update pressures
     for x = 2:N
@@ -611,11 +630,11 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
         % relative pressure using loss coeff
         P_o_rel(1:M, x) = P_o_rel_ideal(1:M, x) - loss_global(1:M, x) .* (P_o_rel(1:M, x-1) - P_static_global(1:M, x-1));
     
+    
+        % stagnation and static static pressure from relative and stagnation properties
+        P_o(1:M, x) = P_o_rel(1:M, x) .* (h_o(1:M, x) ./ h_o_rel(1:M, x)).^(k_gamma);
+        P_static_global(1:M, x) = P_o(1:M, x) .* (T_static_global(1:M, x) ./ T_o(1:M, x)).^(k_gamma);
     end
-
-    % stagnation and static static pressure from relative and stagnation properties
-    P_o(1:M, 2:N) = P_o_rel(1:M, 2:N) .* (T_o(1:M, 2:N) ./ T_o_rel(1:M, 2:N)).^(k_gamma);
-    P_static_global(1:M, 2:N) = P_o(1:M, 2:N) .* (T_static_global(1:M, 2:N) ./ T_o(1:M, 2:N)).^(k_gamma);
     
     % density throughout
     rho_global(1:M, 2:N) = P_static_global(1:M, 2:N) ./ (R_constant .* T_static_global(1:M, 2:N));
@@ -637,34 +656,25 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     conv_rho = [conv_rho eps_rho];
     conv_omega = [conv_omega eps_omega];
 
-    stop_condition = eps_Psi > 1e-5;
+    stop_condition = eps_Psi > 1e-5; % can increase to 1e-10
     iteration = iteration + 1;
-
 
 %% end of loop
 end 
 
-%{
-[X, R] = meshgrid(x_values, r_values);  % Create grid of x and r values
-% Surface plot
-figure;% Contour plot
+%% Convergence
 figure;
-contourf(X, R, T, 20);  % Replace T with the desired output, 20 is the number of contour levels
-xlabel('x (Axial Coordinate)');
-ylabel('r (Radial Coordinate)');
-title('Temperature Contour Plot');
-colorbar;  % Add a color bar to indicate value scale
-surf(X, R, V_global);  % Replace T with the desired output (temperature, pressure, etc.)
-xlabel('x (Axial Coordinate)');
-ylabel('r (Radial Coordinate)');
-zlabel('Temperature');  % Replace with the variable you are plotting
-title('Temperature Distribution');
-shading interp;  % Smooth the color transition
-colorbar;  % Add a color bar to indicate value scale
-%}
+semilogy(conv_Psi); hold;
+semilogy(conv_S); 
+semilogy(conv_rho); 
+semilogy(conv_omega); 
+
+
+legend("Psi", "S", "rho", "omega");
+hold off;
 
 %% ----- Plots -----
-%{
+% %{
 % Streamlines
 figure;
 contourf(X, R, Psi_values, 10);  % Replace T with the desired output, 20 is the number of contour levels
@@ -754,16 +764,6 @@ colorbar;  % Add a color bar to indicate value scale
 
 iteration
 
-figure;
-semilogy(conv_Psi); hold;
-semilogy(conv_S); 
-semilogy(conv_rho); 
-semilogy(conv_omega); 
-
-
-legend("Psi", "S", "rho", "omega");
-hold off;
-
 format default
 %% check outputs
 m_dot
@@ -776,7 +776,7 @@ C_x(:, 1)
 % midspan
 % shroud
 
-i_ms = M/2;
+i_ms = ceil(M/2);
 
 Alpha_global = atan(C_theta ./ C_x) .* (180 / pi);
 Beta_global = Beta_global .* (180 / pi);
@@ -796,7 +796,9 @@ Beta_TE = [Beta_global(1, i_TE);
           Beta_global(i_ms, i_TE);
           Beta_global(M, i_TE)]
 
-metal_LE = [43.6167; 45.5652; 48.0185];
+metal_LE = [55.4978;
+            57.8026;
+            60.7361];
 
 Incidence_LE = Beta_LE - metal_LE
 
@@ -863,7 +865,7 @@ H_TE = static_P_TE ./ [rho_global(1, i_TE); rho_global(i_ms, i_TE); rho_global(M
 delta_H = H_TE - H_LE;
 
 % R = static P / Energy
-Reaction = delta_H ./ (U_123 .* delta_C_theta)
+% Reaction = delta_H ./ (U_123 .* delta_C_theta) % <- pretty sure this is wrong
 
 % Power Absorbed
 W = m_dot * U_123 .* delta_C_theta / 10^6 % MW
