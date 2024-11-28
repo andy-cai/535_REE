@@ -186,7 +186,6 @@ for x = (i_LE + 1):i_TE  % Loop over axial points from L.E. to T.E.
     rC_theta(1:M, x) = rC_theta(1:M, i_LE) + delta_rC_theta_TE .* ((x - i_LE) / (i_TE - i_LE));
 end
 
-% ensure conservation of momentum by tracing rC_theta across subsequent cells
 %% TOGGLE THIS
 % rC_theta(1:M, i_TE+1:end) = repmat(rC_theta(1:M, i_TE), 1, num_points_x - i_TE);
 %% TOGGLE THIS
@@ -278,27 +277,23 @@ rho_global(:, 1) = P_static_global(:, 1) ./ (R_constant .* T_static_global(:, 1)
 
 %% Middle Chunk of Calculations
 % Move from 1 -> N updating using common calc block
-% note that I and velocities are already calculated
+% note that we assume straight streamlines for the initialization
 
-% relative quantities from Conservation of Rothalpy (assuming no c_r for first iteration)
-h_o_rel(1:M, 2:N) = h_o1_rel + 0.5 * U(1:M, 2:N).^2; % Conservation of Rothalpy, U(1, 1) = 0
+for x = 2:N % from inlet to exit (inlet already defined)
+    if x <= i_LE || x > i_TE % for values before LE or after TE, use stagnation enthalpy
 
+        h_o(:, x) = h_o(:, x-1); % h_o at origin (i-1)
+        h_o_rel(:, x) = h_o(:, x) + U(:, x) .* (U(:, x) - 2.*C_theta(:, x)) ./ 2;
+
+    else % relative enthalpies
+        h_o_rel(:, x) = h_o_rel(:, x-1);
+        h_o(:, x) = h_o_rel(:, x) - U(:, x) .* (U(:, x) - 2.*C_theta(:, x)) ./ 2;
+    end
+end
+
+% temperatures from enthalpy
+T_o(1:M, 2:N) = h_o(1:M, 2:N) ./ c_p;
 T_o_rel(1:M, 2:N) = h_o_rel(1:M, 2:N) ./ c_p;
-
-% stagnation temperatures from velocities and T_o_rel
-T_o(1:M, 2:N) = T_o_rel(1:M, 2:N) - (U(1:M, 2:N) .* (U(1:M, 2:N) - 2.*C_theta(1:M, 2:N)) ./ (2 * c_p));
-
-% constant T_o after TE (no work)
-T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
-
-% constant T_o = T_o after TE (no work, no U)
-% T_o(1:M, (i_TE+1):N) = repmat(T_o(1:M, i_TE), 1, N - i_TE);
-
-% constant T_o_rel = T_o after TE (no work, no U)
-T_o_rel(1:M, (i_TE+1):N) = T_o(1:M, (i_TE+1):N);
-
-h_o(1:M, 2:N) = c_p .* T_o(1:M, 2:N);
-h_o_rel(1:M, 2:N) = c_p .* T_o_rel(1:M, 2:N);
 
 h(1:M, 1:N) = h_o_rel(1:M, 1:N) - 0.5 .* V_global(1:M, 1:N).^2;
 
@@ -636,24 +631,6 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
 %% end of loop
 end 
 
-%{
-[X, R] = meshgrid(x_values, r_values);  % Create grid of x and r values
-% Surface plot
-figure;% Contour plot
-figure;
-contourf(X, R, T, 20);  % Replace T with the desired output, 20 is the number of contour levels
-xlabel('x (Axial Coordinate)');
-ylabel('r (Radial Coordinate)');
-title('Temperature Contour Plot');
-colorbar;  % Add a color bar to indicate value scale
-surf(X, R, V_global);  % Replace T with the desired output (temperature, pressure, etc.)
-xlabel('x (Axial Coordinate)');
-ylabel('r (Radial Coordinate)');
-zlabel('Temperature');  % Replace with the variable you are plotting
-title('Temperature Distribution');
-shading interp;  % Smooth the color transition
-colorbar;  % Add a color bar to indicate value scale
-%}
 
 %% ----- Plots -----
 % %{
@@ -867,7 +844,20 @@ rP_static = static_P_TE ./ static_P_LE
 rP_o = P_o_TE ./ P_o_LE
 
 
-
+%% ANDY's Calcs
+% m_dot = 30.4 kg/s
+% c_x = 136 m/s
+% Work = 1.5 MW
+% C_theta(shroud, LE) = 78.6 m/s
+% C_theta(hub, LE) = 87.3 m/s
+% C_theta(shroud, LE) = 235.8 m/s
+% C_theta(hub, TE) = 262 m/s
+% Flow velocities at the hub are calculated assuming free vortex.
+% 
+% R = 0.382
+% Isentropic pressure ratio = 1.68
+% Twist = 32.75 - 62.6 = -29.85
+% Turn = 55.15 - 8.64 = 46.51
 
 % ------- Step X: Functions ---------
 
