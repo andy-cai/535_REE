@@ -1,5 +1,8 @@
-% Francois-Xavier Duclos 261050648
-% 535 Project
+% Andy Cai                  260956042​
+% Aidan Christoffersson     260953872
+% Francois-Xavier Duclos    261050648
+% Athanasios Dollas			261051983​
+%% 535 Project
 
 %% ------- Step 0: Variable identification -------
 
@@ -22,11 +25,10 @@ N = 6000 * (2*pi)/60; % [rad/s]
 delta_rC_theta_hub = 82.3; % [m^2/s]
 delta_rC_theta_shroud = 84.4; % [m^2/s]
 
+%% No work case
 % delta_rC_theta_hub = 0;
 % delta_rC_theta_shroud = 0;
 
-% delta_rC_theta_hub = 140; % [m^2/s]
-% delta_rC_theta_shroud = 160; % [m^2/s]
 
 
 %% ------- Step 1: Grid -------
@@ -464,17 +466,17 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
         % (inlet remains constant)
         % repeat of prior calcs
     
-    % Hub, inlet. Modified as there are no points below, or left of, (1, 1)
-    C_x(1, 1) = m_dot / ((2 * pi * rho_inlet) .* R(1, 1)) * (Psi_values(2, 1) - Psi_values(1, 1)) / (dr);
-    C_r(1, 1) = -m_dot / (2 * pi * rho_inlet * R(1, 1)) * (Psi_values(1, 2) - Psi_values(1, 1)) / (dx);
-
-    % Shroud, inlet. Modified as there are no points above, or left of, (num_points_r, 1)
-    C_x(num_points_r, 1) = m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 1) - Psi_values(num_points_r - 1, 1)) / (dr);
-    C_r(num_points_r, 1) = -m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 2) - Psi_values(num_points_r, 1)) / (dx);
-
-    % Inlet. Modified as there are no points left of the column
-    C_x(2:num_points_r-1, 1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(3:num_points_r, 1) - Psi_values(1:num_points_r-2, 1)) ./ (2 * dr);
-    C_r(2:num_points_r-1, 1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(2:num_points_r-1, 2) - Psi_values(2:num_points_r-1, 1)) ./ (dx);
+    % % Hub, inlet. Modified as there are no points below, or left of, (1, 1)
+    % C_x(1, 1) = m_dot / ((2 * pi * rho_inlet) .* R(1, 1)) * (Psi_values(2, 1) - Psi_values(1, 1)) / (dr);
+    % C_r(1, 1) = -m_dot / (2 * pi * rho_inlet * R(1, 1)) * (Psi_values(1, 2) - Psi_values(1, 1)) / (dx);
+    % 
+    % % Shroud, inlet. Modified as there are no points above, or left of, (num_points_r, 1)
+    % C_x(num_points_r, 1) = m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 1) - Psi_values(num_points_r - 1, 1)) / (dr);
+    % C_r(num_points_r, 1) = -m_dot / (2 * pi * rho_inlet * R(num_points_r, 1)) * (Psi_values(num_points_r, 2) - Psi_values(num_points_r, 1)) / (dx);
+    % 
+    % % Inlet. Modified as there are no points left of the column
+    % C_x(2:num_points_r-1, 1) = m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(3:num_points_r, 1) - Psi_values(1:num_points_r-2, 1)) ./ (2 * dr);
+    % C_r(2:num_points_r-1, 1) = -m_dot ./ (2 * pi * rho_inlet .* R(2:num_points_r-1, 1)) .* (Psi_values(2:num_points_r-1, 2) - Psi_values(2:num_points_r-1, 1)) ./ (dx);
 
     % Hub, outlet. Modified as there are no points below, or right of, (1, num_points_x)
     C_x(1, num_points_x) = m_dot / (2 * pi * rho_global(1, num_points_x) * R(1, num_points_x)) * (Psi_values(2, num_points_x) - Psi_values(1, num_points_x)) / (dr);
@@ -796,9 +798,9 @@ Beta_TE = [Beta_global(1, i_TE);
           Beta_global(i_ms, i_TE);
           Beta_global(M, i_TE)]
 
-metal_LE = [55.4978;
-            57.8026;
-            60.7361];
+metal_LE = [55.6808;
+            58.2620;
+            60.5849];
 
 Incidence_LE = Beta_LE - metal_LE
 
@@ -837,7 +839,7 @@ P_o_TE = [P_o(1, i_TE);
 total_P_rise = (P_o_TE - P_o_LE)
 
 % Reaction at LE, midpoint, TE
-Reaction = 0.5 * [1 + delta_rC_theta_hub/U(1, i_LE);
+Reaction = 1 - 0.5 * [1 + delta_rC_theta_hub/U(1, i_LE);
                     1 + (0.5*(delta_rC_theta_hub + delta_rC_theta_shroud)/U(1, i_LE));
                     1 + delta_rC_theta_shroud/U(M, i_LE)]
 
@@ -863,9 +865,6 @@ H_LE = static_P_LE ./ [rho_global(1, i_LE); rho_global(i_ms, i_LE); rho_global(M
 H_TE = static_P_TE ./ [rho_global(1, i_TE); rho_global(i_ms, i_TE); rho_global(M, i_TE)];
 
 delta_H = H_TE - H_LE;
-
-% R = static P / Energy
-% Reaction = delta_H ./ (U_123 .* delta_C_theta) % <- pretty sure this is wrong
 
 % Power Absorbed
 W = m_dot * U_123 .* delta_C_theta / 10^6 % MW
