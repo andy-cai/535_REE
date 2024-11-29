@@ -446,6 +446,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
             h_o(M, x) = h_o(M, x-1); % h_o at origin (i-1)
             h_o_rel(M, x) = h_o(M, x) + U(M, x) * (U(M, x) - 2*C_theta(M, x)) / 2;
 
+
         else % relative enthalpies
             % hub
             h_o_rel(1, x) = h_o_rel(1, x-1);
@@ -454,15 +455,18 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
             % shroud
             h_o_rel(M, x) = h_o_rel(M, x-1);
             h_o(M, x) = h_o_rel(M, x) - U(M, x) * (U(M, x) - 2*C_theta(M, x)) / 2;
+
         end
     end
 
     for x = 2:N % from inlet to exit (inlet already defined)
         for r = 2:M-1
+    
             if x <= i_LE || x > i_TE % for values before LE or after TE, use stagnation enthalpy
+                
                 if shroud_side(r-1, x-1) % if streamline goes towards shroud
                     h_o_streamline = h_o(r, x-1).* a_towards_shroud(r-1, x-1) + h_o(r-1, x-1).* b_towards_shroud(r-1, x-1); % h_o at origin (i-1)
-             
+                      
                 else % if streamline goes towards hub
                     h_o_streamline = h_o(r+1, x-1).* a_towards_hub(r-1, x-1) + h_o(r, x-1).* b_towards_hub(r-1, x-1); % h_o at origin (i-1)
 
@@ -472,6 +476,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
 
                 % trace forward to define enthalpy (i)
                 h_o(r, x) = h_o_streamline; % - (0.5 * U_streamline^2) + (0.5 * U(r, x)^2); % defining same point, just from different cell depending on streamline
+
                 % update relative enthalpy
                 h_o_rel(r, x) = h_o(r, x) + U(r, x) * (U(r, x) - 2*C_theta(r, x)) / 2;
         
@@ -493,6 +498,7 @@ while (stop_condition && iteration < max_iter) || iteration <= min_iter
     
                 % trace forward to define relative enthalpy (i)
                 h_o_rel(r, x) = h_o_rel_streamline - (0.5 * U_streamline^2) + (0.5 * U(r, x)^2); % defining same point, just from different nodes depending on streamline
+    
                 % update stagnation enthalpy
                 h_o(r, x) = h_o_rel(r, x) - U(r, x) * (U(r, x) - 2*C_theta(r, x)) / 2;
             end
@@ -562,6 +568,7 @@ semilogy(conv_Psi); hold;
 semilogy(conv_S); 
 semilogy(conv_rho); 
 semilogy(conv_omega); 
+
 
 legend("Psi", "S", "rho", "omega");
 hold off;
@@ -767,7 +774,7 @@ rP_static = static_P_TE ./ static_P_LE
 rP_o = P_o_TE ./ P_o_LE
 
 
-%% Expected Values
+%% ANDY's Calcs
 % m_dot = 30.4 kg/s
 % c_x = 136 m/s
 % Work = 1.5 MW
@@ -776,10 +783,11 @@ rP_o = P_o_TE ./ P_o_LE
 % C_theta(shroud, LE) = 235.8 m/s
 % C_theta(hub, TE) = 262 m/s
 % Flow velocities at the hub are calculated assuming free vortex.
+% 
 % R = 0.382
 % Isentropic pressure ratio = 1.68
-% Deflection = 32.75 - 8.64 = 24.11
-% Incidence = 32.75 - 30 = 2.75
+% Twist = 32.75 - 62.6 = -29.85
+% Turn = 55.15 - 8.64 = 46.51
 
 % ------- Step X: Functions ---------
 
